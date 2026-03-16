@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小工具箱</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 工具列表视图 -->
+    <div id="tool-list-view" class="view">
+      <header>
+        <h1>小工具箱</h1>
+        <p>选择一个工具开始使用</p>
+      </header>
+      <div id="tool-list" class="tool-list">
+        <!-- 工具列表将通过JS动态生成 -->
+      </div>
+    </div>
+
+    <!-- 工具详情视图 -->
+    <div id="tool-detail-view" class="view hidden">
+      <div class="tool-header">
+        <button id="back-button" class="icon-button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 id="tool-title">工具名称</h2>
+      </div>
+      <div id="tool-container" class="tool-container">
+        <!-- 工具体内容将通过JS动态加载 -->
+      </div>
+    </div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图标生成器 - 小工具箱</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    .description {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .canvas-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+    .canvas-item {
+      text-align: center;
+      background: #fafafa;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .primary-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .primary-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .label {
+      display: block;
+      margin-top: 10px;
+      color: #666;
+      font-size: 12px;
+    }
+    .success {
+      text-align: center;
+      color: #4caf50;
+      font-weight: 600;
+      margin-top: 20px;
+      padding: 10px;
+      background: #e8f5e9;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>小工具箱图标生成器</h1>
+    <p class="description">点击下方按钮生成三种尺寸的PNG图标</p>
+
+    <div class="canvas-container">
+      <div class="canvas-item">
+        <canvas id="canvas16" width="16" height="16"></canvas>
+        <span class="label">16x16</span>
+      </div>
+      <div class="canvas-item">
+        <canvas id="canvas48" width="48" height="48"></canvas>
+        <span class="label">48x48</span>
+      </div>
+      <div class="canvas-item">
+        <canvas id="canvas128" width="128" height="128"></canvas>
+        <span class="label">128x128</span>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="primary-button" onclick="drawIcons()">绘制图标</button>
+      <button class="primary-button" onclick="downloadIcons()">下载所有PNG图标</button>
+    </div>
+
+    <div id="success" class="success hidden"></div>
+  </div>
+
+  <script>
+    // 绘制工具箱图标
+    function drawToolboxIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const scale = size / 128;
+
+      ctx.clearRect(0, 0, size, size);
+
+      // 创建渐变背景
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = gradient;
+
+      // 绘制圆角矩形背景
+      const radius = size * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // 绘制工具箱图标
+      ctx.fillStyle = 'white';
+      const padding = size * 0.15;
+      const toolboxWidth = size - padding * 2;
+      const toolboxHeight = size * 0.5;
+      const toolboxX = padding;
+      const toolboxY = (size - toolboxHeight) / 2 + size * 0.1;
+
+      // 工具箱主体
+      const boxRadius = Math.min(toolboxWidth, toolboxHeight) * 0.08;
+      ctx.beginPath();
+      ctx.moveTo(toolboxX + boxRadius, toolboxY);
+      ctx.lineTo(toolboxX + toolboxWidth - boxRadius, toolboxY);
+      ctx.quadraticCurveTo(toolboxX + toolboxWidth, toolboxY, toolboxX + toolboxWidth, toolboxY + boxRadius);
+      ctx.lineTo(toolboxX + toolboxWidth, toolboxY + toolboxHeight - boxRadius);
+      ctx.quadraticCurveTo(toolboxX + toolboxWidth, toolboxY + toolboxHeight, toolboxX + toolboxWidth - boxRadius, toolboxY + toolboxHeight);
+      ctx.lineTo(toolboxX + boxRadius, toolboxY + toolboxHeight);
+      ctx.quadraticCurveTo(toolboxX, toolboxY + toolboxHeight, toolboxX, toolboxY + toolboxHeight - boxRadius);
+      ctx.lineTo(toolboxX, toolboxY + boxRadius);
+      ctx.quadraticCurveTo(toolboxX, toolboxY, toolboxX + boxRadius, toolboxY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 工具箱把手
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = size * 0.04;
+      ctx.lineCap = 'round';
+      const handleWidth = toolboxWidth * 0.4;
+      const handleHeight = size * 0.12;
+      const handleX = (size - handleWidth) / 2;
+      const handleY = toolboxY - size * 0.08;
+
+      ctx.beginPath();
+      ctx.moveTo(handleX, handleY + handleHeight / 2);
+      ctx.lineTo(handleX, handleY);
+      ctx.lineTo(handleX + handleWidth, handleY);
+      ctx.lineTo(handleX + handleWidth, handleY + handleHeight / 2);
+      ctx.stroke();
+
+      // 工具图标（扳手）
+      const toolColor = '#f0f4ff';
+      ctx.fillStyle = toolColor;
+
+      // 扳手头部
+      const wrenchX = size * 0.3;
+      const wrenchY = toolboxY + size * 0.12;
+      const wrenchSize = size * 0.08;
+
+      ctx.beginPath();
+      ctx.arc(wrenchX, wrenchY, wrenchSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 扳手手柄
+      ctx.fillRect(wrenchX - wrenchSize * 0.3, wrenchY, wrenchSize * 0.6, size * 0.25);
+
+      // 扳手开口
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(wrenchX, wrenchY, wrenchSize * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawIcons() {
+      const canvas16 = document.getElementById('canvas16');
+      const canvas48 = document.getElementById('canvas48');
+      const canvas128 = document.getElementById('canvas128');
+
+      drawToolboxIcon(canvas16, 16);
+      drawToolboxIcon(canvas48, 48);
+      drawToolboxIcon(canvas128, 128);
+    }
+
+    function downloadIcons() {
+      drawIcons();
+
+      const sizes = [16, 48, 128];
+      const filenames = {
+        16: 'icon16.png',
+        48: 'icon48.png',
+        128: 'icon128.png'
+      };
+
+      sizes.forEach(size => {
+        const canvas = document.getElementById(`canvas${size}`);
+        const link = document.createElement('a');
+        link.download = filenames[size];
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+
+      const successDiv = document.getElementById('success');
+      successDiv.textContent = '✓ 图标已下载，请将文件移动到 chrome-plugin/icons/ 目录';
+      successDiv.classList.remove('hidden');
+    }
+
+    // 自动绘制预览
+    window.onload = drawIcons;
+  </script>
+</body>
+</html>
