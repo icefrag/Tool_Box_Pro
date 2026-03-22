@@ -218,6 +218,7 @@ function getCssSelector(element) {
     }
   } else {
     // Continue from where we found the ID to the target element
+    // Chrome DevTools: after ID, only keep tag names, no class names
     current = element;
     const pathFromId = [];
 
@@ -229,20 +230,25 @@ function getCssSelector(element) {
 
       let selector = current.tagName.toLowerCase();
 
-      // Add class names (only first meaningful class)
-      let className = '';
-      if (current.className && typeof current.className === 'string') {
-        className = current.className;
-      } else if (current.className && 'baseVal' in current.className) {
-        className = current.className.baseVal;
-      }
+      // Chrome DevTools style: only add class names to the first element after ID
+      // After that, only keep tag names
+      if (pathFromId.length === 0) {
+        // First element after ID: keep class names
+        let className = '';
+        if (current.className && typeof current.className === 'string') {
+          className = current.className;
+        } else if (current.className && 'baseVal' in current.className) {
+          className = current.className.baseVal;
+        }
 
-      if (className && className.trim()) {
-        const classes = className.trim().split(/\s+/).filter(c => c);
-        if (classes.length > 0) {
-          selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+        if (className && className.trim()) {
+          const classes = className.trim().split(/\s+/).filter(c => c);
+          if (classes.length > 0) {
+            selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+          }
         }
       }
+      // Subsequent elements: only keep tag name, no class names
 
       // Only add nth-child when needed
       let index = 1;
