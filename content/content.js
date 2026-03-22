@@ -266,7 +266,11 @@ function removeHoverHighlight() {
 
 function handleMouseDown(event) {
   // Check if click is on the tooltip itself
-  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
+  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip ||
+      (event.target.closest && event.target.closest('#xpath-helper-tooltip')))) {
+    // Click on tooltip, prevent it from reaching the page element
+    event.preventDefault();
+    event.stopImmediatePropagation();
     return;
   }
 

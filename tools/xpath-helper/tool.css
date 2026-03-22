@@ -44,8 +44,3 @@
   background: #ffebee;
   color: #c62828;
 }
-
-.primary-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
