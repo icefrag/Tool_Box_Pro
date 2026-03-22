@@ -1,275 +1,453 @@
-// XPath Helper Content Script - 页面交互层
-(function() {
-  'use strict';
+// Content script - runs on every page
 
-  if (window._xpathHelperInitialized) return;
-  window._xpathHelperInitialized = true;
+// Store selected element
+window._selectedElement = null;
 
-  const state = {
-    selectedElement: null,
-    previousHighlight: null,
-    selectionActive: false,
-    tooltip: null
-  };
+// Store previous highlight to remove it
+let _previousHighlight = null;
 
-  // ============================================
-  // XPath Generation Functions
-  // ============================================
+// Store hover highlight to remove it
+let _hoverHighlight = null;
 
-  function getAbsoluteXPath(element) {
-    if (!element || element.nodeType !== 1) return '';
+// X marker overlay element
+let _xMarker = null;
 
-    const parts = [];
-    let current = element;
+// Scroll ticking flag for throttling
+let _scrollTicking = false;
 
-    while (current && current.nodeType === 1) {
+// Is selection mode active
+let _selectionActive = false;
+
+// XPath tooltip element
+let _tooltip = null;
+
+// ============================================
+// XPath Generation Functions
+// ============================================
+
+function getAbsoluteXPath(element) {
+  if (!element || element.nodeType !== 1) return '';
+
+  let parts = [];
+  let current = element;
+
+  while (current && current.nodeType === 1) {
+    let index = 1;
+    let sibling = current.previousElementSibling;
+    while (sibling) {
+      if (sibling.tagName === current.tagName) index++;
+      sibling = sibling.previousElementSibling;
+    }
+    parts.unshift(`${current.tagName.toLowerCase()}[${index}]`);
+    current = current.parentElement;
+  }
+
+  return '/' + parts.join('/');
+}
+
+// ============================================
+// CSS Selector Generation (matches browser DevTools)
+// ============================================
+
+function getCssSelector(element) {
+  if (!element || element.nodeType !== 1) return '';
+
+  if (element.id) {
+    return '#' + CSS.escape(element.id);
+  }
+
+  const parts = [];
+  let current = element;
+
+  while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
+    let selector = current.tagName.toLowerCase();
+
+    // Add class names - handle SVG elements which have SVGAnimatedString
+    let className = '';
+    if (current.className && typeof current.className === 'string') {
+      className = current.className;
+    } else if (current.className && 'baseVal' in current.className) {
+      className = current.className.baseVal;
+    }
+
+    if (className && className.trim()) {
+      const classes = className.trim().split(/\s+/).filter(c => c);
+      if (classes.length > 0) {
+        selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+      }
+    }
+
+    // Add index if needed
+    if (current.parentElement) {
       let index = 1;
       let sibling = current.previousElementSibling;
       while (sibling) {
         if (sibling.tagName === current.tagName) index++;
         sibling = sibling.previousElementSibling;
       }
-      parts.unshift(`${current.tagName.toLowerCase()}[${index}]`);
-      current = current.parentElement;
+
+      const totalSiblings = Array.from(current.parentElement.children).filter(s => s.tagName === current.tagName).length;
+      if (totalSiblings > 1) {
+        selector += `:nth-child(${index})`;
+      }
     }
 
-    return '/' + parts.join('/');
+    parts.unshift(selector);
+    current = current.parentElement;
   }
 
-  // ============================================
-  // CSS Selector Generation
-  // ============================================
-
-  function getCssSelector(element) {
-    if (!element || element.nodeType !== 1) return '';
-
-    if (element.id) {
-      return '#' + CSS.escape(element.id);
-    }
-
-    const parts = [];
-    let current = element;
-
-    while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
-      let selector = current.tagName.toLowerCase();
-
-      let className = '';
-      if (current.className && typeof current.className === 'string') {
-        className = current.className;
-      } else if (current.className && 'baseVal' in current.className) {
-        className = current.className.baseVal;
-      }
-
-      if (className && className.trim()) {
-        const classes = className.trim().split(/\s+/).filter(c => c);
-        if (classes.length > 0) {
-          selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
-        }
-      }
-
-      if (current.parentElement) {
-        let index = 1;
-        let sibling = current.previousElementSibling;
-        while (sibling) {
-          if (sibling.tagName === current.tagName) index++;
-          sibling = sibling.previousElementSibling;
-        }
-
-        const totalSiblings = Array.from(current.parentElement.children).filter(s => s.tagName === current.tagName).length;
-        if (totalSiblings > 1) {
-          selector += `:nth-child(${index})`;
-        }
-      }
-
-      parts.unshift(selector);
-      current = current.parentElement;
-    }
-
-    if (document.body) {
-      parts.unshift('body');
-    } else if (document.documentElement) {
-      parts.unshift('html');
-    }
-
-    return parts.join(' > ');
+  // Add body
+  if (document.body) {
+    parts.unshift('body');
+  } else if (document.documentElement) {
+    parts.unshift('html');
   }
 
-  // ============================================
-  // Tooltip UI
-  // ============================================
+  return parts.join(' > ');
+}
 
-  function createTooltip() {
-    if (state.tooltip) return state.tooltip;
+// ============================================
+// Tooltip UI
+// ============================================
 
-    state.tooltip = document.createElement('div');
-    state.tooltip.id = 'xpath-helper-tooltip';
-    state.tooltip.innerHTML = `
-      <div class="xpath-helper-content">
-        <div class="xpath-helper-header">
-          <span class="xpath-helper-title">XPath Helper</span>
-          <span class="xpath-helper-hint">ESC 退出</span>
-        </div>
-        <div class="xpath-helper-paths">
-          <div class="xpath-helper-path-group">
-            <span class="xpath-helper-label">XPath:</span>
-            <code class="xpath-helper-xpath"></code>
-            <button class="xpath-helper-copy-btn" data-type="xpath">复制</button>
-          </div>
-          <div class="xpath-helper-path-group">
-            <span class="xpath-helper-label">Selector:</span>
-            <code class="xpath-helper-selector"></code>
-            <button class="xpath-helper-copy-btn" data-type="selector">复制</button>
-          </div>
-        </div>
-        <div class="xpath-helper-hint-bottom">点击页面元素获取路径</div>
+function createTooltip() {
+  if (_tooltip) return _tooltip;
+
+  _tooltip = document.createElement('div');
+  _tooltip.id = 'xpath-helper-tooltip';
+  _tooltip.innerHTML = `
+    <div class="xpath-helper-tooltip-content">
+      <div class="xpath-helper-tooltip-header">
+        <span class="xpath-helper-title">XPath Helper</span>
+        <span class="xpath-helper-hint-inline">按 ESC 退出</span>
       </div>
-    `;
-    document.body.appendChild(state.tooltip);
+      <div class="xpath-helper-paths">
+        <div class="xpath-helper-path-group">
+          <span class="xpath-helper-label">XPath:</span>
+          <code class="xpath-helper-xpath"></code>
+          <button class="xpath-helper-copy-btn" data-type="xpath">复制</button>
+        </div>
+        <div class="xpath-helper-path-group">
+          <span class="xpath-helper-label">Selector:</span>
+          <code class="xpath-helper-selector"></code>
+          <button class="xpath-helper-copy-btn" data-type="selector">复制</button>
+        </div>
+      </div>
+      <div class="xpath-helper-hint">点击页面元素获取路径</div>
+    </div>
+  `;
+  document.body.appendChild(_tooltip);
 
-    state.tooltip.querySelectorAll('.xpath-helper-copy-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        const type = btn.dataset.type;
-        const text = type === 'xpath'
-          ? state.tooltip.querySelector('.xpath-helper-xpath').textContent
-          : state.tooltip.querySelector('.xpath-helper-selector').textContent;
-        navigator.clipboard.writeText(text).then(() => {
-          btn.textContent = '已复制!';
-          setTimeout(() => btn.textContent = '复制', 1500);
-        });
+  // Bind event listeners
+  _tooltip.querySelectorAll('.xpath-helper-copy-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const type = btn.dataset.type;
+      const text = type === 'xpath'
+        ? _tooltip.querySelector('.xpath-helper-xpath').textContent
+        : _tooltip.querySelector('.xpath-helper-selector').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '已复制!';
+        setTimeout(() => btn.textContent = '复制', 1500);
       });
     });
-
-    state.tooltip.addEventListener('mousedown', (e) => e.stopPropagation());
-    state.tooltip.addEventListener('click', (e) => e.stopPropagation());
-
-    return state.tooltip;
-  }
-
-  function showTooltip(element) {
-    const tooltip = createTooltip();
-    tooltip.style.display = 'block';
-
-    const xpath = getAbsoluteXPath(element);
-    const selector = getCssSelector(element);
-
-    tooltip.querySelector('.xpath-helper-xpath').textContent = xpath;
-    tooltip.querySelector('.xpath-helper-selector').textContent = selector;
-    tooltip.querySelector('.xpath-helper-hint-bottom').textContent = '已选择: ' + element.tagName.toLowerCase();
-  }
-
-  function removeTooltip() {
-    if (state.tooltip) {
-      state.tooltip.remove();
-      state.tooltip = null;
-    }
-  }
-
-  // ============================================
-  // Highlighting
-  // ============================================
-
-  function highlightElement(element) {
-    if (state.previousHighlight) {
-      state.previousHighlight.classList.remove('xpath-helper-highlight');
-    }
-    element.classList.add('xpath-helper-highlight');
-    state.previousHighlight = element;
-  }
-
-  // ============================================
-  // Event Handler
-  // ============================================
-
-  function handleMouseDown(event) {
-    // 忽略 tooltip 上的点击
-    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) {
-      return;
-    }
-
-    if (!state.selectionActive) return;
-
-    // 阻止默认行为（防止按钮跳转等）
-    event.preventDefault();
-    // 阻止冒泡
-    event.stopPropagation();
-
-    // 使用 elementFromPoint 获取点击位置的实际元素
-    const target = document.elementFromPoint(event.clientX, event.clientY);
-
-    // 确保获取的是元素节点
-    let element = target;
-    while (element && element.nodeType !== 1) {
-      element = element.parentNode;
-    }
-
-    if (!element || element === document.body || element === document.documentElement) return;
-    if (element.id === 'xpath-helper-tooltip') return;
-
-    state.selectedElement = element;
-    highlightElement(element);
-    showTooltip(element);
-  }
-
-  function handleKeyDown(event) {
-    if (event.key === 'Escape' && state.selectionActive) {
-      stopSelection();
-    }
-  }
-
-  // ============================================
-  // Public API
-  // ============================================
-
-  function startSelection() {
-    if (state.selectionActive) return { success: true };
-
-    state.selectionActive = true;
-    document.body.style.cursor = 'crosshair';
-
-    document.addEventListener('mousedown', handleMouseDown, true);
-    document.addEventListener('keydown', handleKeyDown);
-
-    createTooltip();
-    state.tooltip.style.display = 'block';
-
-    state.selectedElement = null;
-    if (state.previousHighlight) {
-      state.previousHighlight.classList.remove('xpath-helper-highlight');
-      state.previousHighlight = null;
-    }
-
-    return { success: true };
-  }
-
-  function stopSelection() {
-    state.selectionActive = false;
-    document.body.style.cursor = '';
-    document.removeEventListener('mousedown', handleMouseDown, true);
-    document.removeEventListener('keydown', handleKeyDown);
-
-    if (state.previousHighlight) {
-      state.previousHighlight.classList.remove('xpath-helper-highlight');
-      state.previousHighlight = null;
-    }
-    state.selectedElement = null;
-
-    removeTooltip();
-    return { success: true };
-  }
-
-  // ============================================
-  // Message Listener
-  // ============================================
-
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'startSelection') {
-      sendResponse(startSelection());
-    } else if (request.action === 'stopSelection') {
-      sendResponse(stopSelection());
-    }
-    return true;
   });
 
-})();
+  // Prevent tooltip clicks from triggering selection
+  _tooltip.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  return _tooltip;
+}
+
+function showTooltip(element) {
+  const tooltip = createTooltip();
+  tooltip.style.display = 'block';
+
+  const xpath = getAbsoluteXPath(element);
+  const selector = getCssSelector(element);
+
+  tooltip.querySelector('.xpath-helper-xpath').textContent = xpath;
+  tooltip.querySelector('.xpath-helper-selector').textContent = selector;
+  tooltip.querySelector('.xpath-helper-hint').textContent = '已选择: ' + element.tagName.toLowerCase();
+}
+
+function hideTooltip() {
+  if (_tooltip) {
+    _tooltip.style.display = 'none';
+  }
+}
+
+function removeTooltip() {
+  if (_tooltip) {
+    _tooltip.remove();
+    _tooltip = null;
+  }
+}
+
+// ============================================
+// Highlighting
+// ============================================
+
+function highlightElement(element) {
+  if (_previousHighlight) {
+    _previousHighlight.classList.remove('xpath-helper-highlight');
+  }
+
+  element.classList.add('xpath-helper-highlight');
+  _previousHighlight = element;
+}
+
+function createXMarker() {
+  if (_xMarker) return _xMarker;
+  _xMarker = document.createElement('div');
+  _xMarker.className = 'xpath-helper-x-marker';
+  _xMarker.textContent = '✕';
+  document.body.appendChild(_xMarker);
+  return _xMarker;
+}
+
+function updateXMarkerPosition(element) {
+  if (!_xMarker) createXMarker();
+  const rect = element.getBoundingClientRect();
+  // Position X at top-right corner of the element
+  _xMarker.style.top = rect.top + 'px';
+  _xMarker.style.right = (window.innerWidth - rect.right) + 'px';
+  _xMarker.style.display = 'flex';
+}
+
+function hideXMarker() {
+  if (_xMarker) {
+    _xMarker.style.display = 'none';
+  }
+}
+
+function removeXMarker() {
+  if (_xMarker) {
+    _xMarker.remove();
+    _xMarker = null;
+  }
+}
+
+function hoverHighlightElement(element) {
+  // Skip if it's our own tooltip or marker
+  if (element.id === 'xpath-helper-tooltip' ||
+      element.classList.contains('xpath-helper-x-marker') ||
+      (element.closest && element.closest('#xpath-helper-tooltip'))) {
+    hideXMarker();
+    return;
+  }
+
+  // Remove previous hover highlight
+  if (_hoverHighlight && _hoverHighlight !== element) {
+    _hoverHighlight.classList.remove('xpath-helper-highlight-hover');
+  }
+
+  // Add new hover highlight
+  if (element !== _hoverHighlight) {
+    element.classList.add('xpath-helper-highlight-hover');
+    _hoverHighlight = element;
+    updateXMarkerPosition(element);
+  }
+}
+
+function removeHoverHighlight() {
+  if (_hoverHighlight) {
+    _hoverHighlight.classList.remove('xpath-helper-highlight-hover');
+    _hoverHighlight = null;
+  }
+  hideXMarker();
+}
+
+// ============================================
+// Event Handlers
+// ============================================
+
+function handleMouseDown(event) {
+  // Check if click is on the tooltip itself
+  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
+    return;
+  }
+
+  if (!_selectionActive) return;
+
+  // Prevent default and stop propagation to prevent navigation
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  // Use elementFromPoint to get the element at click position
+  // This works even if the element has its own click handler
+  const target = document.elementFromPoint(event.clientX, event.clientY);
+
+  if (!target || target === document.documentElement || target === document.body || target === null) {
+    return;
+  }
+
+  // Don't select our own tooltip
+  if (target.id === 'xpath-helper-tooltip' || (target.closest && target.closest('#xpath-helper-tooltip'))) {
+    return;
+  }
+
+  window._selectedElement = target;
+  highlightElement(target);
+  showTooltip(target);
+}
+
+function handleClick(event) {
+  // Check if click is on the tooltip itself
+  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
+    return;
+  }
+
+  if (!_selectionActive) return;
+
+  // Prevent any click events from triggering navigation
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+function handleMouseUp(event) {
+  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
+    return;
+  }
+
+  if (!_selectionActive) return;
+
+  // Prevent mouseup default behavior (some sites use this for navigation)
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
+function handleKeyDown(event) {
+  // ESC key to exit selection mode
+  if (event.key === 'Escape' && _selectionActive) {
+    stopSelection();
+  }
+}
+
+function handleMouseOver(event) {
+  if (!_selectionActive) return;
+
+  // Skip if it's our own tooltip
+  if (event.target.id === 'xpath-helper-tooltip' || (event.target.closest && event.target.closest('#xpath-helper-tooltip'))) {
+    return;
+  }
+
+  // Use elementFromPoint for accurate targeting
+  const target = document.elementFromPoint(event.clientX, event.clientY);
+  if (target) {
+    hoverHighlightElement(target);
+  }
+}
+
+function handleMouseOut(event) {
+  if (!_selectionActive) return;
+
+  // Check if we're leaving to another element within the page
+  const relatedTarget = event.relatedTarget;
+  if (relatedTarget &&
+      (relatedTarget.id === 'xpath-helper-tooltip' ||
+       relatedTarget.classList.contains('xpath-helper-x-marker') ||
+       (relatedTarget.closest && relatedTarget.closest('#xpath-helper-tooltip')))) {
+    return;
+  }
+
+  removeHoverHighlight();
+}
+
+function handleScroll() {
+  if (!_selectionActive || !_hoverHighlight) return;
+  // Use requestAnimationFrame for throttling
+  if (!_scrollTicking) {
+    window.requestAnimationFrame(() => {
+      if (_hoverHighlight) {
+        updateXMarkerPosition(_hoverHighlight);
+      }
+      _scrollTicking = false;
+    });
+    _scrollTicking = true;
+  }
+}
+
+function handleResize() {
+  if (!_selectionActive || !_hoverHighlight) return;
+  // Update X marker position when window resizes
+  updateXMarkerPosition(_hoverHighlight);
+}
+
+function startSelection() {
+  if (_selectionActive) return;
+
+  _selectionActive = true;
+  document.body.style.cursor = 'crosshair';
+
+  // Capture all mouse events at capture phase to prevent navigation
+  document.addEventListener('mousedown', handleMouseDown, true);
+  document.addEventListener('mouseup', handleMouseUp, true);
+  document.addEventListener('click', handleClick, true);
+  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('mouseover', handleMouseOver, true);
+  document.addEventListener('mouseout', handleMouseOut, true);
+  window.addEventListener('scroll', handleScroll, true);
+  window.addEventListener('resize', handleResize);
+
+  // Create and show tooltip and X marker
+  createTooltip();
+  createXMarker();
+  _tooltip.style.display = 'block';
+  _tooltip.querySelector('.xpath-helper-hint').textContent = '点击页面元素获取路径 (ESC退出)';
+
+  // Clear previous selection
+  window._selectedElement = null;
+  if (_previousHighlight) {
+    _previousHighlight.classList.remove('xpath-helper-highlight');
+    _previousHighlight = null;
+  }
+  if (_hoverHighlight) {
+    _hoverHighlight.classList.remove('xpath-helper-highlight-hover');
+    _hoverHighlight = null;
+  }
+  hideXMarker();
+}
+
+function stopSelection() {
+  _selectionActive = false;
+  document.body.style.cursor = '';
+  document.removeEventListener('mousedown', handleMouseDown, true);
+  document.removeEventListener('mouseup', handleMouseUp, true);
+  document.removeEventListener('click', handleClick, true);
+  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener('mouseover', handleMouseOver, true);
+  document.removeEventListener('mouseout', handleMouseOut, true);
+  window.removeEventListener('scroll', handleScroll, true);
+  window.removeEventListener('resize', handleResize);
+
+  if (_previousHighlight) {
+    _previousHighlight.classList.remove('xpath-helper-highlight');
+    _previousHighlight = null;
+  }
+  if (_hoverHighlight) {
+    _hoverHighlight.classList.remove('xpath-helper-highlight-hover');
+    _hoverHighlight = null;
+  }
+  window._selectedElement = null;
+
+  removeXMarker();
+  removeTooltip();
+}
+
+// ============================================
+// Message Listener
+// ============================================
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'startSelection') {
+    startSelection();
+    sendResponse({ success: true });
+  } else if (request.action === 'stopSelection') {
+    stopSelection();
+    sendResponse({ success: true });
+  }
+  return true;
+});

@@ -1,5 +1,3 @@
-/* XPath Helper - Page Overlay Styles */
-
 .xpath-helper-highlight {
   outline: 3px solid #ff6600 !important;
   outline-offset: 2px !important;
@@ -9,6 +7,35 @@
 
 .xpath-helper-highlight:hover {
   outline-color: #ff3300 !important;
+}
+
+/* Hover mode highlight - more visible */
+.xpath-helper-highlight-hover {
+  outline: 3px solid #00a8ff !important;
+  outline-offset: 2px !important;
+  background-color: rgba(0, 168, 255, 0.1) !important;
+  transition: all 0.1s ease;
+}
+
+/* X marker overlay - independent element to avoid z-index issues */
+.xpath-helper-x-marker {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  background: #ff3300;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 2147483646;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+  transform: translate(50%, -50%);
 }
 
 /* Tooltip styles */
@@ -27,11 +54,11 @@
   right: 10px;
 }
 
-.xpath-helper-content {
+.xpath-helper-tooltip-content {
   padding: 12px;
 }
 
-.xpath-helper-header {
+.xpath-helper-tooltip-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -46,7 +73,7 @@
   font-size: 14px;
 }
 
-.xpath-helper-header .xpath-helper-hint {
+.xpath-helper-hint-inline {
   font-size: 11px;
   color: #888;
   font-weight: normal;
@@ -98,7 +125,7 @@
   background: #e55a00;
 }
 
-.xpath-helper-hint-bottom {
+.xpath-helper-hint {
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid #eee;
