@@ -41,10 +41,12 @@ function getAbsoluteXPath(element) {
       if (sibling.tagName === current.tagName) index++;
       sibling = sibling.previousElementSibling;
     }
-    if (index === 1) {
-      parts.unshift(current.tagName.toLowerCase());
+    const tagName = current.tagName.toLowerCase();
+    // Chrome DevTools always keeps [1] for html/body, but omits [1] for other elements
+    if (index === 1 && tagName !== 'html' && tagName !== 'body') {
+      parts.unshift(tagName);
     } else {
-      parts.unshift(`${current.tagName.toLowerCase()}[${index}]`);
+      parts.unshift(`${tagName}[${index}]`);
     }
     current = current.parentElement;
   }
