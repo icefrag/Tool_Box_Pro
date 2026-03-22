@@ -9,8 +9,7 @@
     selectedElement: null,
     previousHighlight: null,
     selectionActive: false,
-    tooltip: null,
-    lastClickTarget: null
+    tooltip: null
   };
 
   // ============================================
@@ -142,10 +141,8 @@
       });
     });
 
-    // 确保 tooltip 点击不冒泡
-    state.tooltip.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
+    state.tooltip.addEventListener('mousedown', (e) => e.stopPropagation());
+    state.tooltip.addEventListener('click', (e) => e.stopPropagation());
 
     return state.tooltip;
   }
@@ -182,43 +179,37 @@
   }
 
   // ============================================
-  // 获取元素辅助函数
+  // Event Handler
   // ============================================
 
-  function getActualElement(event) {
-    // 先尝试 event.target
-    let target = event.target;
-
-    // 如果不是元素节点，向上找
-    while (target && target.nodeType !== 1) {
-      target = target.parentNode;
+  function handleMouseDown(event) {
+    // 忽略 tooltip 上的点击
+    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) {
+      return;
     }
 
-    if (!target || target === document.body || target === document.documentElement) {
-      // 回退到 elementFromPoint
-      target = document.elementFromPoint(event.clientX, event.clientY);
-    }
-
-    return target;
-  }
-
-  // ============================================
-  // Event Handlers - 在 capture 阶段第一时间获取目标
-  // ============================================
-
-  // 不阻止默认行为，只捕获目标
-  function handleCapture(event) {
     if (!state.selectionActive) return;
-    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
 
-    const target = getActualElement(event);
+    // 阻止默认行为（防止按钮跳转等）
+    event.preventDefault();
+    // 阻止冒泡
+    event.stopPropagation();
 
-    if (!target || target.id === 'xpath-helper-tooltip') return;
+    // 使用 elementFromPoint 获取点击位置的实际元素
+    const target = document.elementFromPoint(event.clientX, event.clientY);
 
-    // 不阻止，不冒泡，只是获取目标
-    state.selectedElement = target;
-    highlightElement(target);
-    showTooltip(target);
+    // 确保获取的是元素节点
+    let element = target;
+    while (element && element.nodeType !== 1) {
+      element = element.parentNode;
+    }
+
+    if (!element || element === document.body || element === document.documentElement) return;
+    if (element.id === 'xpath-helper-tooltip') return;
+
+    state.selectedElement = element;
+    highlightElement(element);
+    showTooltip(element);
   }
 
   function handleKeyDown(event) {
@@ -237,9 +228,7 @@
     state.selectionActive = true;
     document.body.style.cursor = 'crosshair';
 
-    // 在 capture 阶段监听，第一个拿到目标
-    document.addEventListener('mousedown', handleCapture, true);
-    document.addEventListener('click', handleCapture, true);
+    document.addEventListener('mousedown', handleMouseDown, true);
     document.addEventListener('keydown', handleKeyDown);
 
     createTooltip();
@@ -257,8 +246,7 @@
   function stopSelection() {
     state.selectionActive = false;
     document.body.style.cursor = '';
-    document.removeEventListener('mousedown', handleCapture, true);
-    document.removeEventListener('click', handleCapture, true);
+    document.removeEventListener('mousedown', handleMouseDown, true);
     document.removeEventListener('keydown', handleKeyDown);
 
     if (state.previousHighlight) {
