@@ -1,6 +1,7 @@
 // 主弹窗逻辑 - 工具管理和路由
 import { TOOL_TYPES, UI_EVENTS } from '../utils/constants.js';
 import { CookieTool } from '../tools/cookie-tool/tool.js';
+import { XpathTool } from '../tools/xpath-helper/tool.js';
 
 class ToolManager {
   constructor() {
@@ -19,6 +20,7 @@ class ToolManager {
   registerTools() {
     // 注册所有工具
     this.registerTool(new CookieTool());
+    this.registerTool(new XpathTool());
     // 未来工具在这里注册：
     // this.registerTool(new FutureTool());
   }

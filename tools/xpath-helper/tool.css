@@ -1,0 +1,51 @@
+/* XPath Helper Tool Styles */
+
+.xpath-tool {
+  padding: 8px 0;
+}
+
+.xpath-tool-intro {
+  margin-bottom: 16px;
+}
+
+.xpath-tool-intro p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.xpath-tool .tool-controls {
+  margin-bottom: 16px;
+}
+
+.xpath-status {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.xpath-status.hidden {
+  display: none;
+}
+
+.xpath-status.info {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.xpath-status.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.xpath-status.error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.primary-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}

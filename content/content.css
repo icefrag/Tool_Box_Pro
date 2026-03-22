@@ -1,0 +1,108 @@
+/* XPath Helper - Page Overlay Styles */
+
+.xpath-helper-highlight {
+  outline: 3px solid #ff6600 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(255, 102, 0, 0.1) !important;
+  transition: outline 0.2s ease;
+}
+
+.xpath-helper-highlight:hover {
+  outline-color: #ff3300 !important;
+}
+
+/* Tooltip styles */
+#xpath-helper-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  min-width: 320px;
+  max-width: 450px;
+  top: 10px;
+  right: 10px;
+}
+
+.xpath-helper-content {
+  padding: 12px;
+}
+
+.xpath-helper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.xpath-helper-title {
+  font-weight: 600;
+  color: #222;
+  font-size: 14px;
+}
+
+.xpath-helper-header .xpath-helper-hint {
+  font-size: 11px;
+  color: #888;
+  font-weight: normal;
+}
+
+.xpath-helper-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.xpath-helper-path-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.xpath-helper-label {
+  color: #666;
+  font-size: 12px;
+  min-width: 65px;
+}
+
+.xpath-helper-path-group code {
+  flex: 1;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  color: #333;
+  word-break: break-all;
+  min-width: 150px;
+}
+
+.xpath-helper-copy-btn {
+  padding: 3px 8px;
+  background: #ff6600;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.xpath-helper-copy-btn:hover {
+  background: #e55a00;
+}
+
+.xpath-helper-hint-bottom {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+  color: #888;
+  font-size: 11px;
+  text-align: center;
+}
