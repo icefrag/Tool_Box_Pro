@@ -64,6 +64,67 @@ function getAbsoluteXPath(element) {
   return '/' + parts.join('/');
 }
 
+/**
+ * Generate a short XPath using ID attribute (matches Chrome DevTools behavior)
+ * Strategy: Find the nearest ancestor with a unique ID, use it as the starting point
+ */
+function getSmartXPath(element) {
+  if (!element || element.nodeType !== 1) return '';
+
+  // Check if the element itself has a unique ID
+  if (element.id) {
+    const idElement = document.getElementById(element.id);
+    if (idElement === element) {
+      return `//*[@id="${element.id}"]`;
+    }
+  }
+
+  // Search for ancestor with unique ID
+  let current = element;
+  let parts = [];
+
+  while (current && current.nodeType === 1) {
+    if (current.id) {
+      const idElement = document.getElementById(current.id);
+      if (idElement === current) {
+        // Found unique ID ancestor, start from here
+        parts.unshift(`//*[@id="${current.id}"]`);
+        break;
+      }
+    }
+
+    // Calculate index for this element
+    let index = 1;
+    let sibling = current.previousElementSibling;
+    while (sibling) {
+      if (sibling.tagName === current.tagName) index++;
+      sibling = sibling.previousElementSibling;
+    }
+
+    // Count total siblings
+    let total = 0;
+    sibling = current.parentElement ? current.parentElement.firstElementSibling : null;
+    if (current.parentElement) {
+      sibling = current.parentElement.firstElementChild;
+      while (sibling) {
+        if (sibling.tagName === current.tagName) total++;
+        sibling = sibling.nextElementSibling;
+      }
+    }
+
+    const tagName = current.tagName.toLowerCase();
+    if (total === 1) {
+      parts.unshift(tagName);
+    } else {
+      parts.unshift(`${tagName}[${index}]`);
+    }
+
+    current = current.parentElement;
+  }
+
+  return parts.join('/');
+}
+
 // ============================================
 // CSS Selector Generation (matches browser DevTools)
 // ============================================
@@ -180,10 +241,12 @@ function showTooltip(element) {
   const tooltip = createTooltip();
   tooltip.style.display = 'block';
 
-  const xpath = getAbsoluteXPath(element);
+  const absoluteXPath = getAbsoluteXPath(element);
+  const smartXPath = getSmartXPath(element);
   const selector = getCssSelector(element);
 
-  tooltip.querySelector('.xpath-helper-xpath').textContent = xpath;
+  // Show smart XPath (shorter, matches Chrome DevTools style)
+  tooltip.querySelector('.xpath-helper-xpath').textContent = smartXPath || absoluteXPath;
   tooltip.querySelector('.xpath-helper-selector').textContent = selector;
   tooltip.querySelector('.xpath-helper-hint').textContent = '已选择: ' + element.tagName.toLowerCase();
 }
@@ -313,20 +376,20 @@ function handleMouseDown(event) {
   showTooltip(target);
 
   // Auto-copy based on copy mode configuration - copy every selection
-  const xpath = getAbsoluteXPath(target);
+  const smartXPath = getSmartXPath(target) || getAbsoluteXPath(target);
   const selector = getCssSelector(target);
   let copyText = '';
 
   switch (_copyMode) {
     case 'xpath':
-      copyText = xpath;
+      copyText = smartXPath;
       break;
     case 'selector':
       copyText = selector;
       break;
     case 'both':
     default:
-      copyText = `${xpath}\n${selector}`;
+      copyText = `${smartXPath}\n${selector}`;
       break;
   }
 
