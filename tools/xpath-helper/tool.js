@@ -2,6 +2,15 @@
 import { BaseTool } from '../base-tool.js';
 import { TOOL_TYPES } from '../../utils/constants.js';
 
+// 配置项
+const COPY_OPTIONS = {
+  XPATH_ONLY: 'xpath',
+  SELECTOR_ONLY: 'selector',
+  BOTH: 'both'
+};
+
+const STORAGE_KEY = 'xpath-helper-copy-mode';
+
 export class XpathTool extends BaseTool {
   constructor() {
     super('XPath Helper', TOOL_TYPES.XPATH);
@@ -10,6 +19,7 @@ export class XpathTool extends BaseTool {
     this.description = '点击页面元素获取 XPath 和 CSS Selector';
     this.icon = '🔍';
 
+    this.copyMode = COPY_OPTIONS.BOTH; // 默认两者都复制
     this.element = null;
     this.createElement();
   }
@@ -21,18 +31,64 @@ export class XpathTool extends BaseTool {
       <div class="xpath-tool-intro">
         <p>点击下方按钮开始选择元素，页面会进入选择模式</p>
       </div>
+      <div class="copy-option-group">
+        <label class="copy-option-label">自动复制内容：</label>
+        <div class="copy-options">
+          <label class="copy-option">
+            <input type="radio" name="copy-mode" value="${COPY_OPTIONS.XPATH_ONLY}">
+            <span>仅 XPath</span>
+          </label>
+          <label class="copy-option">
+            <input type="radio" name="copy-mode" value="${COPY_OPTIONS.SELECTOR_ONLY}">
+            <span>仅 Selector</span>
+          </label>
+          <label class="copy-option">
+            <input type="radio" name="copy-mode" value="${COPY_OPTIONS.BOTH}" checked>
+            <span>两者都复制</span>
+          </label>
+        </div>
+      </div>
       <div class="tool-controls">
         <button id="start-xpath" class="primary-button">开始选择元素</button>
       </div>
       <div id="xpath-status" class="xpath-status hidden"></div>
     `;
 
+    this.loadSettings();
     this.setupEventListeners();
+  }
+
+  async loadSettings() {
+    try {
+      const result = await chrome.storage.sync.get(STORAGE_KEY);
+      if (result[STORAGE_KEY]) {
+        this.copyMode = result[STORAGE_KEY];
+        const radio = this.element.querySelector(`input[name="copy-mode"][value="${this.copyMode}"]`);
+        if (radio) radio.checked = true;
+      }
+    } catch (err) {
+      console.log('Failed to load settings:', err);
+    }
+  }
+
+  saveSettings(copyMode) {
+    this.copyMode = copyMode;
+    chrome.storage.sync.set({ [STORAGE_KEY]: copyMode }).catch(err => {
+      console.log('Failed to save settings:', err);
+    });
   }
 
   setupEventListeners() {
     const startBtn = this.element.querySelector('#start-xpath');
     startBtn.addEventListener('click', () => this.startSelection());
+
+    // 配置选项变化监听
+    const radioButtons = this.element.querySelectorAll('input[name="copy-mode"]');
+    radioButtons.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        this.saveSettings(e.target.value);
+      });
+    });
   }
 
   async initialize() {
@@ -87,9 +143,12 @@ export class XpathTool extends BaseTool {
       // 等待脚本就绪
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 发送消息
+      // 发送消息，携带复制模式配置
       await new Promise((resolve, reject) => {
-        chrome.tabs.sendMessage(tabId, { action: 'startSelection' }, (response) => {
+        chrome.tabs.sendMessage(tabId, {
+          action: 'startSelection',
+          copyMode: this.copyMode
+        }, (response) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
           } else {

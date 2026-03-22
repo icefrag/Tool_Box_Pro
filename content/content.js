@@ -24,6 +24,9 @@ let _tooltip = null;
 // Track if first selection has been copied
 let _hasCopiedOnFirstSelection = false;
 
+// Copy mode: 'both' | 'xpath' | 'selector'
+let _copyMode = 'both';
+
 // ============================================
 // XPath Generation Functions
 // ============================================
@@ -300,14 +303,30 @@ function handleMouseDown(event) {
   highlightElement(target);
   showTooltip(target);
 
-  // Auto-copy XPath and CSS Selector to clipboard on first selection
+  // Auto-copy based on copy mode configuration
   if (!_hasCopiedOnFirstSelection) {
     const xpath = getAbsoluteXPath(target);
     const selector = getCssSelector(target);
-    const copyText = `${xpath}\n${selector}`;
-    navigator.clipboard.writeText(copyText).catch(() => {
-      // Silently ignore copy failures
-    });
+    let copyText = '';
+
+    switch (_copyMode) {
+      case 'xpath':
+        copyText = xpath;
+        break;
+      case 'selector':
+        copyText = selector;
+        break;
+      case 'both':
+      default:
+        copyText = `${xpath}\n${selector}`;
+        break;
+    }
+
+    if (copyText) {
+      navigator.clipboard.writeText(copyText).catch(() => {
+        // Silently ignore copy failures
+      });
+    }
     _hasCopiedOnFirstSelection = true;
   }
 }
@@ -394,10 +413,11 @@ function handleResize() {
   updateXMarkerPosition(_hoverHighlight);
 }
 
-function startSelection() {
+function startSelection(copyMode = 'both') {
   if (_selectionActive) return;
 
   _selectionActive = true;
+  _copyMode = copyMode;
   document.body.style.cursor = 'crosshair';
 
   // Capture all mouse events at capture phase to prevent navigation
@@ -467,7 +487,7 @@ function stopSelection() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'startSelection') {
-    startSelection();
+    startSelection(request.copyMode || 'both');
     sendResponse({ success: true });
   } else if (request.action === 'stopSelection') {
     stopSelection();
