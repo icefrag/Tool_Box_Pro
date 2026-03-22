@@ -92,6 +92,10 @@ export class XpathTool extends BaseTool {
   }
 
   async initialize() {
+    // If element was destroyed (set to null), recreate it
+    if (!this.element) {
+      this.createElement();
+    }
     this.log('XPath Helper 工具初始化完成');
   }
 
