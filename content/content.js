@@ -130,6 +130,7 @@
     state.tooltip.querySelectorAll('.xpath-helper-copy-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const type = btn.dataset.type;
         const text = type === 'xpath'
           ? state.tooltip.querySelector('.xpath-helper-xpath').textContent
@@ -139,6 +140,11 @@
           setTimeout(() => btn.textContent = '复制', 1500);
         });
       });
+    });
+
+    // 确保 tooltip 点击不冒泡
+    state.tooltip.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     return state.tooltip;
@@ -176,48 +182,43 @@
   }
 
   // ============================================
-  // Event Handlers
+  // 获取元素辅助函数
   // ============================================
 
-  // 在 mousedown 时记录目标（capture 阶段）
-  function handleMouseDownCapture(event) {
-    if (!state.selectionActive) return;
-    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
+  function getActualElement(event) {
+    // 先尝试 event.target
+    let target = event.target;
 
-    // 记录点击目标
-    state.lastClickTarget = event.target;
-  }
-
-  // 在 click 时处理（bubble 阶段）
-  function handleClick(event) {
-    if (!state.selectionActive) return;
-    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
-
-    // 使用 mousedown 时记录的目标
-    let target = state.lastClickTarget;
-
-    // 如果没有记录，尝试用 elementFromPoint
-    if (!target) {
-      target = document.elementFromPoint(event.clientX, event.clientY);
-    }
-
-    // 确保获取的是元素节点
+    // 如果不是元素节点，向上找
     while (target && target.nodeType !== 1) {
       target = target.parentNode;
     }
 
-    if (!target || target === document.documentElement || target === document.body) return;
-    if (target.id === 'xpath-helper-tooltip') return;
+    if (!target || target === document.body || target === document.documentElement) {
+      // 回退到 elementFromPoint
+      target = document.elementFromPoint(event.clientX, event.clientY);
+    }
 
-    event.preventDefault();
-    event.stopPropagation();
+    return target;
+  }
 
+  // ============================================
+  // Event Handlers - 在 capture 阶段第一时间获取目标
+  // ============================================
+
+  // 不阻止默认行为，只捕获目标
+  function handleCapture(event) {
+    if (!state.selectionActive) return;
+    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
+
+    const target = getActualElement(event);
+
+    if (!target || target.id === 'xpath-helper-tooltip') return;
+
+    // 不阻止，不冒泡，只是获取目标
     state.selectedElement = target;
     highlightElement(target);
     showTooltip(target);
-
-    // 清除记录
-    state.lastClickTarget = null;
   }
 
   function handleKeyDown(event) {
@@ -236,16 +237,15 @@
     state.selectionActive = true;
     document.body.style.cursor = 'crosshair';
 
-    // 同时监听 mousedown(capture) 和 click
-    document.addEventListener('mousedown', handleMouseDownCapture, true);
-    document.addEventListener('click', handleClick, true);
+    // 在 capture 阶段监听，第一个拿到目标
+    document.addEventListener('mousedown', handleCapture, true);
+    document.addEventListener('click', handleCapture, true);
     document.addEventListener('keydown', handleKeyDown);
 
     createTooltip();
     state.tooltip.style.display = 'block';
 
     state.selectedElement = null;
-    state.lastClickTarget = null;
     if (state.previousHighlight) {
       state.previousHighlight.classList.remove('xpath-helper-highlight');
       state.previousHighlight = null;
@@ -257,8 +257,8 @@
   function stopSelection() {
     state.selectionActive = false;
     document.body.style.cursor = '';
-    document.removeEventListener('mousedown', handleMouseDownCapture, true);
-    document.removeEventListener('click', handleClick, true);
+    document.removeEventListener('mousedown', handleCapture, true);
+    document.removeEventListener('click', handleCapture, true);
     document.removeEventListener('keydown', handleKeyDown);
 
     if (state.previousHighlight) {
@@ -266,7 +266,6 @@
       state.previousHighlight = null;
     }
     state.selectedElement = null;
-    state.lastClickTarget = null;
 
     removeTooltip();
     return { success: true };
