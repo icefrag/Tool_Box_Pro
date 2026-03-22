@@ -132,51 +132,136 @@ function getSmartXPath(element) {
 function getCssSelector(element) {
   if (!element || element.nodeType !== 1) return '';
 
+  // If element has a unique ID, return it directly
   if (element.id) {
-    return '#' + CSS.escape(element.id);
+    const idElement = document.getElementById(element.id);
+    if (idElement === element) {
+      return '#' + CSS.escape(element.id);
+    }
   }
 
   const parts = [];
   let current = element;
+  let startedFromId = false;
 
-  while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
-    let selector = current.tagName.toLowerCase();
-
-    // Add class names - handle SVG elements which have SVGAnimatedString
-    let className = '';
-    if (current.className && typeof current.className === 'string') {
-      className = current.className;
-    } else if (current.className && 'baseVal' in current.className) {
-      className = current.className.baseVal;
-    }
-
-    if (className && className.trim()) {
-      const classes = className.trim().split(/\s+/).filter(c => c);
-      if (classes.length > 0) {
-        selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+  // Search for ancestor with unique ID
+  while (current && current.nodeType === 1) {
+    // Check if current element has a unique ID
+    if (current.id) {
+      const idElement = document.getElementById(current.id);
+      if (idElement === current) {
+        // Found unique ID, start from here
+        parts.unshift('#' + CSS.escape(current.id));
+        startedFromId = true;
+        break;
       }
     }
 
-    // Always add nth-child index to guarantee uniqueness
-    if (current.parentElement) {
+    // Stop at body/html if we haven't found an ID
+    if (current === document.body || current === document.documentElement) {
+      break;
+    }
+
+    current = current.parentElement;
+  }
+
+  // If no ID found, start from body (original behavior)
+  if (!startedFromId) {
+    current = element;
+    while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
+      let selector = current.tagName.toLowerCase();
+
+      // Add class names
+      let className = '';
+      if (current.className && typeof current.className === 'string') {
+        className = current.className;
+      } else if (current.className && 'baseVal' in current.className) {
+        className = current.className.baseVal;
+      }
+
+      if (className && className.trim()) {
+        const classes = className.trim().split(/\s+/).filter(c => c);
+        if (classes.length > 0) {
+          selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+        }
+      }
+
+      // Add nth-child index only when needed for uniqueness
+      if (current.parentElement) {
+        let index = 1;
+        let sibling = current.previousElementSibling;
+        while (sibling) {
+          if (sibling.tagName === current.tagName) index++;
+          sibling = sibling.previousElementSibling;
+        }
+        // Count total siblings
+        let total = 0;
+        sibling = current.parentElement.firstElementChild;
+        while (sibling) {
+          if (sibling.tagName === current.tagName) total++;
+          sibling = sibling.nextElementSibling;
+        }
+        // Only add index if there are multiple siblings
+        if (total > 1) {
+          selector += `:nth-child(${index})`;
+        }
+      }
+
+      parts.unshift(selector);
+      current = current.parentElement;
+    }
+
+    if (document.body) {
+      parts.unshift('body');
+    } else if (document.documentElement) {
+      parts.unshift('html');
+    }
+  } else {
+    // Continue from where we found the ID to the target element
+    current = element;
+    // Go up to the ID element
+    while (current && current.parentElement) {
+      if (current.id && document.getElementById(current.id) === current) {
+        break;
+      }
+
+      let selector = current.tagName.toLowerCase();
+
+      // Add class names (only first meaningful class)
+      let className = '';
+      if (current.className && typeof current.className === 'string') {
+        className = current.className;
+      } else if (current.className && 'baseVal' in current.className) {
+        className = current.className.baseVal;
+      }
+
+      if (className && className.trim()) {
+        const classes = className.trim().split(/\s+/).filter(c => c);
+        if (classes.length > 0) {
+          selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
+        }
+      }
+
+      // Only add nth-child when needed
       let index = 1;
       let sibling = current.previousElementSibling;
       while (sibling) {
         if (sibling.tagName === current.tagName) index++;
         sibling = sibling.previousElementSibling;
       }
-      selector += `:nth-child(${index})`;
+      let total = 0;
+      sibling = current.parentElement ? current.parentElement.firstElementChild : null;
+      while (sibling) {
+        if (sibling.tagName === current.tagName) total++;
+        sibling = sibling.nextElementSibling;
+      }
+      if (total > 1) {
+        selector += `:nth-child(${index})`;
+      }
+
+      parts.push(selector);
+      current = current.parentElement;
     }
-
-    parts.unshift(selector);
-    current = current.parentElement;
-  }
-
-  // Add body
-  if (document.body) {
-    parts.unshift('body');
-  } else if (document.documentElement) {
-    parts.unshift('html');
   }
 
   return parts.join(' > ');
