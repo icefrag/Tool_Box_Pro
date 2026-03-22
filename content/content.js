@@ -1,18 +1,16 @@
 // XPath Helper Content Script - 页面交互层
-// 使用全局对象避免重复声明问题
 (function() {
   'use strict';
 
-  // 如果已经初始化过，直接返回
   if (window._xpathHelperInitialized) return;
   window._xpathHelperInitialized = true;
 
-  // 状态存储
   const state = {
     selectedElement: null,
     previousHighlight: null,
     selectionActive: false,
-    tooltip: null
+    tooltip: null,
+    lastClickTarget: null
   };
 
   // ============================================
@@ -129,7 +127,6 @@
     `;
     document.body.appendChild(state.tooltip);
 
-    // Bind copy button events
     state.tooltip.querySelectorAll('.xpath-helper-copy-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -174,7 +171,6 @@
     if (state.previousHighlight) {
       state.previousHighlight.classList.remove('xpath-helper-highlight');
     }
-
     element.classList.add('xpath-helper-highlight');
     state.previousHighlight = element;
   }
@@ -183,30 +179,45 @@
   // Event Handlers
   // ============================================
 
-  function handleMouseDown(event) {
-    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) {
-      return;
+  // 在 mousedown 时记录目标（capture 阶段）
+  function handleMouseDownCapture(event) {
+    if (!state.selectionActive) return;
+    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
+
+    // 记录点击目标
+    state.lastClickTarget = event.target;
+  }
+
+  // 在 click 时处理（bubble 阶段）
+  function handleClick(event) {
+    if (!state.selectionActive) return;
+    if (state.tooltip && (state.tooltip.contains(event.target) || event.target === state.tooltip)) return;
+
+    // 使用 mousedown 时记录的目标
+    let target = state.lastClickTarget;
+
+    // 如果没有记录，尝试用 elementFromPoint
+    if (!target) {
+      target = document.elementFromPoint(event.clientX, event.clientY);
     }
 
-    if (!state.selectionActive) return;
+    // 确保获取的是元素节点
+    while (target && target.nodeType !== 1) {
+      target = target.parentNode;
+    }
+
+    if (!target || target === document.documentElement || target === document.body) return;
+    if (target.id === 'xpath-helper-tooltip') return;
 
     event.preventDefault();
-
-    const target = document.elementFromPoint(event.clientX, event.clientY);
-
-    if (!target || target === document.documentElement || target === document.body || target === null) {
-      return;
-    }
-
-    if (target.id === 'xpath-helper-tooltip' || (target.closest && target.closest('#xpath-helper-tooltip'))) {
-      return;
-    }
+    event.stopPropagation();
 
     state.selectedElement = target;
     highlightElement(target);
     showTooltip(target);
 
-    event.stopPropagation();
+    // 清除记录
+    state.lastClickTarget = null;
   }
 
   function handleKeyDown(event) {
@@ -216,22 +227,25 @@
   }
 
   // ============================================
-  // Public API (called from popup)
+  // Public API
   // ============================================
 
   function startSelection() {
-    if (state.selectionActive) return { success: true, message: 'Already active' };
+    if (state.selectionActive) return { success: true };
 
     state.selectionActive = true;
     document.body.style.cursor = 'crosshair';
 
-    document.addEventListener('mousedown', handleMouseDown, true);
+    // 同时监听 mousedown(capture) 和 click
+    document.addEventListener('mousedown', handleMouseDownCapture, true);
+    document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleKeyDown);
 
     createTooltip();
     state.tooltip.style.display = 'block';
 
     state.selectedElement = null;
+    state.lastClickTarget = null;
     if (state.previousHighlight) {
       state.previousHighlight.classList.remove('xpath-helper-highlight');
       state.previousHighlight = null;
@@ -243,7 +257,8 @@
   function stopSelection() {
     state.selectionActive = false;
     document.body.style.cursor = '';
-    document.removeEventListener('mousedown', handleMouseDown, true);
+    document.removeEventListener('mousedown', handleMouseDownCapture, true);
+    document.removeEventListener('click', handleClick, true);
     document.removeEventListener('keydown', handleKeyDown);
 
     if (state.previousHighlight) {
@@ -251,6 +266,7 @@
       state.previousHighlight = null;
     }
     state.selectedElement = null;
+    state.lastClickTarget = null;
 
     removeTooltip();
     return { success: true };
