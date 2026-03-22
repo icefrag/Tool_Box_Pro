@@ -219,7 +219,9 @@ function getCssSelector(element) {
   } else {
     // Continue from where we found the ID to the target element
     current = element;
-    // Go up to the ID element
+    const pathFromId = [];
+
+    // Go up to the ID element, collecting path
     while (current && current.parentElement) {
       if (current.id && document.getElementById(current.id) === current) {
         break;
@@ -259,8 +261,13 @@ function getCssSelector(element) {
         selector += `:nth-child(${index})`;
       }
 
-      parts.push(selector);
+      pathFromId.push(selector);
       current = current.parentElement;
+    }
+
+    // Reverse and add to parts (so ID is first, target is last)
+    for (let i = pathFromId.length - 1; i >= 0; i--) {
+      parts.push(pathFromId[i]);
     }
   }
 
