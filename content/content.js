@@ -41,7 +41,11 @@ function getAbsoluteXPath(element) {
       if (sibling.tagName === current.tagName) index++;
       sibling = sibling.previousElementSibling;
     }
-    parts.unshift(`${current.tagName.toLowerCase()}[${index}]`);
+    if (index === 1) {
+      parts.unshift(current.tagName.toLowerCase());
+    } else {
+      parts.unshift(`${current.tagName.toLowerCase()}[${index}]`);
+    }
     current = current.parentElement;
   }
 
