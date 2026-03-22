@@ -41,9 +41,17 @@ function getAbsoluteXPath(element) {
       if (sibling.tagName === current.tagName) index++;
       sibling = sibling.previousElementSibling;
     }
+    // Count total siblings with same tag name
+    let total = 0;
+    sibling = current.parentElement ? current.parentElement.firstElementChild : null;
+    while (sibling) {
+      if (sibling.tagName === current.tagName) total++;
+      sibling = sibling.nextElementSibling;
+    }
+
     const tagName = current.tagName.toLowerCase();
-    // Chrome DevTools always keeps [1] for html/body, but omits [1] for other elements
-    if (index === 1 && tagName !== 'html' && tagName !== 'body') {
+    // Chrome DevTools: only omit [1] when there's exactly one element of this tag name at this level
+    if (total === 1) {
       parts.unshift(tagName);
     } else {
       parts.unshift(`${tagName}[${index}]`);
