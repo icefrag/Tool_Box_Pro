@@ -57,12 +57,7 @@ class ToolManager {
     `;
 
     card.addEventListener('click', async () => {
-      // 对于Cookie工具，直接执行复制操作，不跳转
-      if (tool.name === '获取当前网页cookie') {
-        await this.executeDirectTool(tool);
-      } else {
-        this.openTool(tool.toolId);
-      }
+      this.openTool(tool.toolId);
     });
 
     return card;
