@@ -83,7 +83,7 @@ function getCssSelector(element) {
       }
     }
 
-    // Add index if needed
+    // Always add nth-child index to guarantee uniqueness
     if (current.parentElement) {
       let index = 1;
       let sibling = current.previousElementSibling;
@@ -91,11 +91,7 @@ function getCssSelector(element) {
         if (sibling.tagName === current.tagName) index++;
         sibling = sibling.previousElementSibling;
       }
-
-      const totalSiblings = Array.from(current.parentElement.children).filter(s => s.tagName === current.tagName).length;
-      if (totalSiblings > 1) {
-        selector += `:nth-child(${index})`;
-      }
+      selector += `:nth-child(${index})`;
     }
 
     parts.unshift(selector);
