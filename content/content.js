@@ -21,9 +21,6 @@ let _selectionActive = false;
 // XPath tooltip element
 let _tooltip = null;
 
-// Track if first selection has been copied
-let _hasCopiedOnFirstSelection = false;
-
 // Copy mode: 'both' | 'xpath' | 'selector'
 let _copyMode = 'both';
 
@@ -299,31 +296,28 @@ function handleMouseDown(event) {
   highlightElement(target);
   showTooltip(target);
 
-  // Auto-copy based on copy mode configuration
-  if (!_hasCopiedOnFirstSelection) {
-    const xpath = getAbsoluteXPath(target);
-    const selector = getCssSelector(target);
-    let copyText = '';
+  // Auto-copy based on copy mode configuration - copy every selection
+  const xpath = getAbsoluteXPath(target);
+  const selector = getCssSelector(target);
+  let copyText = '';
 
-    switch (_copyMode) {
-      case 'xpath':
-        copyText = xpath;
-        break;
-      case 'selector':
-        copyText = selector;
-        break;
-      case 'both':
-      default:
-        copyText = `${xpath}\n${selector}`;
-        break;
-    }
+  switch (_copyMode) {
+    case 'xpath':
+      copyText = xpath;
+      break;
+    case 'selector':
+      copyText = selector;
+      break;
+    case 'both':
+    default:
+      copyText = `${xpath}\n${selector}`;
+      break;
+  }
 
-    if (copyText) {
-      navigator.clipboard.writeText(copyText).catch(() => {
-        // Silently ignore copy failures
-      });
-    }
-    _hasCopiedOnFirstSelection = true;
+  if (copyText) {
+    navigator.clipboard.writeText(copyText).catch(() => {
+      // Silently ignore copy failures
+    });
   }
 }
 
@@ -443,9 +437,6 @@ function startSelection(copyMode = 'both') {
     _hoverHighlight = null;
   }
   hideXMarker();
-
-  // Reset first selection copy flag for next session
-  _hasCopiedOnFirstSelection = false;
 }
 
 function stopSelection() {
@@ -472,9 +463,6 @@ function stopSelection() {
 
   removeXMarker();
   removeTooltip();
-
-  // Reset first selection copy flag
-  _hasCopiedOnFirstSelection = false;
 }
 
 // ============================================
