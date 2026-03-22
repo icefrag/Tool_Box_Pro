@@ -50,8 +50,10 @@ function getAbsoluteXPath(element) {
     }
 
     const tagName = current.tagName.toLowerCase();
-    // Chrome DevTools: only omit [1] when there's exactly one element of this tag name at this level
-    if (total === 1) {
+    // Chrome DevTools rules:
+    // 1. html element always omits [1]
+    // 2. Other elements: omit [1] only when total === 1; otherwise keep all indices
+    if (tagName === 'html' || total === 1) {
       parts.unshift(tagName);
     } else {
       parts.unshift(`${tagName}[${index}]`);
