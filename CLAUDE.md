@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Chrome 小工具箱
+# ToolBox Pro
 
-一个轻量实用的 Chrome 扩展小工具箱，基于 Manifest V3 开发，采用模块化设计，易于添加新工具。
+一个轻量实用的 Chrome 扩展工具箱，基于 Manifest V3 开发，采用模块化设计，易于添加新工具。
 
 ## 架构概览
 

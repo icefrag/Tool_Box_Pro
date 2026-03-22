@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "小工具箱",
+  "name": "ToolBox Pro",
   "version": "1.0.0",
-  "description": "集合实用小工具的Chrome扩展",
+  "description": "轻量实用的Chrome扩展工具集，支持Cookie获取、XPath/CSS Selector选择等",
   "permissions": [
     "activeTab",
     "cookies",

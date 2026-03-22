@@ -1,89 +1,144 @@
-# 小工具箱 Chrome 插件
+# ToolBox Pro
 
-一个包含多个实用小工具的Chrome扩展，第一个工具是Cookie管理器，支持获取当前页面Cookie并一键复制为Key=Value格式。
+一款轻量实用的 Chrome 扩展工具箱，帮助你快速完成日常开发、调试任务。
 
-## 目录结构
+![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green)
+![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+## 功能特性
+
+### 1. Cookie 获取工具 🍪
+- 一键获取当前页面所有 Cookie
+- 自动复制到剪贴板，格式：`name1=value1; name2=value2`
+- 适合快速导出登录态、测试接口
+
+### 2. XPath Helper 🔍
+- 点击页面任意元素，获取其 XPath 和 CSS Selector
+- 鼠标悬停高亮显示当前元素
+- 自动复制到剪贴板，支持配置：
+  - 仅复制 XPath
+  - 仅复制 CSS Selector
+  - 两者都复制
+- 生成唯一性路径，支持复杂多卡片布局
+
+## 安装
+
+1. 打开 Chrome 浏览器 → 扩展程序 (`chrome://extensions/`)
+2. 开启右上角的「开发者模式」
+3. 点击「加载已解压的扩展程序」
+4. 选择本项目目录
+5. 点击扩展图标即可使用
+
+## 使用截图
+
+```
+┌─────────────────────────────┐
+│  🔧 ToolBox Pro            │
+│  选择一个工具开始使用        │
+├─────────────────────────────┤
+│  ┌─────────────────────┐   │
+│  │ 🍪 获取当前网页cookie │   │
+│  │ 点击直接复制Cookie    │   │
+│  └─────────────────────┘   │
+│  ┌─────────────────────┐   │
+│  │ 🔍 XPath Helper     │   │
+│  │ 点击元素获取路径     │   │
+│  └─────────────────────┘   │
+└─────────────────────────────┘
+```
+
+## 项目结构
 
 ```
 chrome-plugin/
-├── manifest.json                          # 插件配置
-├── background/
-│   └── service-worker.js                 # 后台服务工作者
-├── popup/
-│   ├── popup.html                        # 主弹窗（工具列表）
-│   ├── popup.css                         # 弹窗样式
-│   └── popup.js                          # 工具管理器
-├── tools/
-│   ├── base-tool.js                      # 工具基类
-│   └── cookie-tool/                      # Cookie工具
-│       ├── tool.html
-│       ├── tool.css
-│       └── tool.js
-├── utils/
-│   ├── constants.js                      # 常量定义
-│   └── messaging.js                      # 消息通信工具
-├── icons/                                # 插件图标
-└── README.md
+├── manifest.json                 # Chrome 扩展配置
+├── popup/                        # 弹窗 UI
+│   ├── popup.html
+│   ├── popup.css
+│   └── popup.js                  # 工具管理器
+├── tools/                        # 工具目录
+│   ├── base-tool.js              # 工具基类
+│   ├── cookie-tool/              # Cookie 工具
+│   └── xpath-helper/             # XPath 选择工具
+├── content/                      # 注入页面的脚本
+│   ├── content.js
+│   └── content.css
+├── utils/                        # 工具函数
+│   ├── constants.js
+│   └── messaging.js
+├── background/                   # 后台服务
+│   └── service-worker.js
+└── icons/                        # 图标
 ```
 
-## 安装方法
+## 开发指南
 
-1. 打开Chrome浏览器，访问 `chrome://extensions/`
-2. 开启右上角的"开发者模式"
-3. 点击左上角"加载已解压的扩展程序"
-4. 选择当前 `chrome-plugin` 目录
-5. 插件即可成功安装
+### 添加新工具
 
-## 使用说明
-
-### Cookie工具使用方法
-1. 点击浏览器右上角的插件图标，打开"小工具箱"
-2. 在工具列表中点击"Cookie管理器"
-3. 点击"获取Cookie"按钮，即可看到当前页面的所有Cookie
-4. 点击"复制全部"按钮，即可将所有Cookie复制为 `name1=value1; name2=value2` 格式
-
-## 添加新工具
-
-添加新工具非常简单，只需要以下几步：
-
-1. 在 `tools/` 目录下创建新工具的目录，例如 `tools/headers-tool/`
-2. 新建三个文件：`tool.html`（UI）、`tool.css`（样式）、`tool.js`（逻辑）
-3. 在 `tool.js` 中继承 `BaseTool` 类，实现 `initialize()`、`execute()`、`destroy()` 方法
-4. 在 `utils/constants.js` 中添加新工具类型常量
-5. 在 `popup/popup.js` 的 `registerTools()` 方法中注册新工具
-6. 重新加载插件即可使用
-
-## 示例：添加Headers查看器工具
+1. 在 `tools/` 创建工具目录，如 `tools/my-tool/`
+2. 继承 `BaseTool` 实现工具类：
 
 ```javascript
-// utils/constants.js
-export const TOOL_TYPES = {
-  COOKIE: 'cookie-tool',
-  HEADERS: 'headers-tool', // 新增
-};
+import { BaseTool } from '../base-tool.js';
+import { TOOL_TYPES } from '../../utils/constants.js';
 
-// popup/popup.js
-import { HeadersTool } from '../tools/headers-tool/tool.js';
+export class MyTool extends BaseTool {
+  constructor() {
+    super('My Tool', TOOL_TYPES.MY_TOOL);
+    this.name = '我的工具';
+    this.description = '工具描述';
+    this.icon = '🛠️';
+    this.createElement();
+  }
 
-registerTools() {
-  this.registerTool(new CookieTool());
-  this.registerTool(new HeadersTool()); // 新增
+  createElement() {
+    this.element = document.createElement('div');
+    this.element.innerHTML = '...';
+  }
+
+  async initialize() { }
+  async execute() { return { success: true }; }
+  async destroy() { this.element = null; }
 }
 ```
 
-## 技术特点
+3. 在 `popup/popup.js` 注册：
 
-- **高度模块化**：每个工具都是独立模块，互不影响
-- **统一接口**：所有工具继承自BaseTool，开发规范一致
-- **低耦合**：新增工具几乎不需要修改核心代码
-- **渐变紫色UI**：现代美观的界面设计
-- **Manifest V3**：采用最新Chrome扩展规范
+```javascript
+import { MyTool } from '../tools/my-tool/tool.js';
 
-## 图标说明
+registerTools() {
+  this.registerTool(new MyTool());
+}
+```
 
-当前 `icons/` 目录下需要添加三个尺寸的图标：
-- `icon16.png` (16x16)
-- `icon48.png` (48x48)
-- `icon128.png` (128x128)
+### 消息通信
 
-可以自己设计图标，或使用在线工具生成。
+工具与 content script 通过 `ToolMessenger` 通信：
+
+```javascript
+// 发送到当前标签页
+await this.sendToActiveTab('type', 'action', { data });
+
+// 发送到 background
+await this.sendMessage('type', 'action', { data });
+```
+
+## 技术栈
+
+- **Manifest V3** - 最新 Chrome 扩展规范
+- **ES6 Modules** - 原生模块化，无需构建工具
+- **Service Worker** - 后台任务处理
+- **Content Scripts** - 页面注入
+
+## 更新日志
+
+### v1.0.0
+- 初始版本
+- Cookie 获取工具
+- XPath Helper 工具
+
+## 许可证
+
+MIT
