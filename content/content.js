@@ -217,63 +217,70 @@ function getCssSelector(element) {
       parts.unshift('html');
     }
   } else {
-    // Continue from where we found the ID to the target element
-    // Chrome DevTools: after ID, only keep tag names, no class names
-    current = element;
-    const pathFromId = [];
+    // Chrome DevTools style: find the ID ancestor, then generate path from ID to target
+    // Collect elements from ID's child to target (in DOM order, not reversed)
+    const ancestors = [];
 
-    // Go up to the ID element, collecting path
-    while (current && current.parentElement) {
+    // Step 1: Collect path from element to ID ancestor (bottom-up)
+    current = element;
+    while (current && current.nodeType === 1) {
       if (current.id && document.getElementById(current.id) === current) {
+        ancestors.push({ element: current, isId: true });
         break;
       }
+      ancestors.push({ element: current, isId: false });
+      current = current.parentElement;
+    }
 
-      let selector = current.tagName.toLowerCase();
+    // Step 2: Generate selectors from ID to target (top-down)
+    // Chrome DevTools: only keep class names for the immediate child of ID
+    let isFirstAfterId = true;
+    for (let i = ancestors.length - 2; i >= 0; i--) { // Skip ID element (last in array)
+      const { element: el } = ancestors[i];
 
-      // Chrome DevTools style: only add class names to the first element after ID
-      // After that, only keep tag names
-      if (pathFromId.length === 0) {
-        // First element after ID: keep class names
+      let selector = el.tagName.toLowerCase();
+
+      // Chrome DevTools: only keep class names on immediate child of ID
+      // For all other elements: only tag name
+      if (isFirstAfterId) {
         let className = '';
-        if (current.className && typeof current.className === 'string') {
-          className = current.className;
-        } else if (current.className && 'baseVal' in current.className) {
-          className = current.className.baseVal;
+        if (el.className && typeof el.className === 'string') {
+          className = el.className;
+        } else if (el.className && 'baseVal' in el.className) {
+          className = el.className.baseVal;
         }
 
         if (className && className.trim()) {
-          const classes = className.trim().split(/\s+/).filter(c => c);
+          const classes = className.trim().split(/\s+/).filter(c => {
+            // Exclude our own highlight classes
+            return c !== 'xpath-helper-highlight' && c !== 'xpath-helper-highlight-hover';
+          });
           if (classes.length > 0) {
             selector += '.' + classes.slice(0, 2).map(c => CSS.escape(c)).join('.');
           }
         }
+        isFirstAfterId = false;
       }
-      // Subsequent elements: only keep tag name, no class names
+      // All other elements: only tag name, no classes
 
-      // Only add nth-child when needed
+      // Add nth-child only when needed for uniqueness
       let index = 1;
-      let sibling = current.previousElementSibling;
+      let sibling = el.previousElementSibling;
       while (sibling) {
-        if (sibling.tagName === current.tagName) index++;
+        if (sibling.tagName === el.tagName) index++;
         sibling = sibling.previousElementSibling;
       }
       let total = 0;
-      sibling = current.parentElement ? current.parentElement.firstElementChild : null;
+      sibling = el.parentElement ? el.parentElement.firstElementChild : null;
       while (sibling) {
-        if (sibling.tagName === current.tagName) total++;
+        if (sibling.tagName === el.tagName) total++;
         sibling = sibling.nextElementSibling;
       }
       if (total > 1) {
         selector += `:nth-child(${index})`;
       }
 
-      pathFromId.push(selector);
-      current = current.parentElement;
-    }
-
-    // Reverse and add to parts (so ID is first, target is last)
-    for (let i = pathFromId.length - 1; i >= 0; i--) {
-      parts.push(pathFromId[i]);
+      parts.push(selector);
     }
   }
 
