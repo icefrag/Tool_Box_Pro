@@ -21,6 +21,9 @@ let _selectionActive = false;
 // XPath tooltip element
 let _tooltip = null;
 
+// Track if first selection has been copied
+let _hasCopiedOnFirstSelection = false;
+
 // ============================================
 // XPath Generation Functions
 // ============================================
@@ -296,6 +299,17 @@ function handleMouseDown(event) {
   window._selectedElement = target;
   highlightElement(target);
   showTooltip(target);
+
+  // Auto-copy XPath and CSS Selector to clipboard on first selection
+  if (!_hasCopiedOnFirstSelection) {
+    const xpath = getAbsoluteXPath(target);
+    const selector = getCssSelector(target);
+    const copyText = `${xpath}\n${selector}`;
+    navigator.clipboard.writeText(copyText).catch(() => {
+      // Silently ignore copy failures
+    });
+    _hasCopiedOnFirstSelection = true;
+  }
 }
 
 function handleClick(event) {
@@ -413,6 +427,9 @@ function startSelection() {
     _hoverHighlight = null;
   }
   hideXMarker();
+
+  // Reset first selection copy flag for next session
+  _hasCopiedOnFirstSelection = false;
 }
 
 function stopSelection() {
@@ -439,6 +456,9 @@ function stopSelection() {
 
   removeXMarker();
   removeTooltip();
+
+  // Reset first selection copy flag
+  _hasCopiedOnFirstSelection = false;
 }
 
 // ============================================
