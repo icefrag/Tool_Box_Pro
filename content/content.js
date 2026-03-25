@@ -526,6 +526,9 @@ function handleMouseDown(event) {
   }).catch(() => {
     // Ignore if popup is not open to receive
   });
+
+  // Auto-exit selection mode after selecting an element
+  stopSelection();
 }
 
 function handleClick(event) {
