@@ -218,6 +218,7 @@ export class XpathTool extends BaseTool {
     const statusEl = this.element.querySelector('#xpath-status');
     const startBtn = this.element.querySelector('#start-xpath');
 
+    this.clearResult();
     statusEl.textContent = '正在启动...';
     statusEl.className = 'xpath-status info';
     statusEl.classList.remove('hidden');
