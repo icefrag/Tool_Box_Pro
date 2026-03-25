@@ -168,5 +168,15 @@ class ToolManager {
 
 // 初始化应用
 document.addEventListener('DOMContentLoaded', () => {
-  new ToolManager();
+  const toolManager = new ToolManager();
+
+  // Popup 关闭时兜底清理 content script 选择状态
+  window.addEventListener('beforeunload', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'stopSelection' })
+          .catch(() => {});
+      }
+    });
+  });
 });
