@@ -110,11 +110,34 @@ export class XpathTool extends BaseTool {
       });
     });
 
+    // Bind copy button click handlers
+    this.element.querySelectorAll('.xpath-result-copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const type = e.target.dataset.type;
+        const text = type === 'xpath'
+          ? this.element.querySelector('#result-xpath').textContent
+          : this.element.querySelector('#result-selector').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          e.target.textContent = '已复制!';
+          setTimeout(() => e.target.textContent = '复制', 1500);
+        });
+      });
+    });
+
     // Listen for selection stopped notifications (e.g., from ESC key in page)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'selectionStopped' && this.isSelectionActive) {
         this.updateUiToInactive();
         this.isSelectionActive = false;
+        sendResponse({ received: true });
+      }
+      return true;
+    });
+
+    // Listen for selection result from content script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'selectionResult' && this.isSelectionActive) {
+        this.showResult(message.elementTag, message.xpath, message.selector);
         sendResponse({ received: true });
       }
       return true;
@@ -289,6 +312,23 @@ export class XpathTool extends BaseTool {
     radioButtons.forEach(radio => {
       radio.disabled = true;
     });
+  }
+
+  showResult(elementTag, xpath, selector) {
+    const resultEl = this.element.querySelector('#xpath-result');
+    const elementTagEl = this.element.querySelector('#result-element-tag');
+    const xpathEl = this.element.querySelector('#result-xpath');
+    const selectorEl = this.element.querySelector('#result-selector');
+    const statusEl = this.element.querySelector('#xpath-status');
+
+    elementTagEl.textContent = elementTag;
+    xpathEl.textContent = xpath;
+    selectorEl.textContent = selector;
+    resultEl.classList.remove('hidden');
+    statusEl.classList.add('hidden');
+
+    this.isSelectionActive = false;
+    this.updateUiToInactive();
   }
 
   async execute() {
