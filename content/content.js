@@ -691,6 +691,11 @@ function stopSelection() {
 
   removeXMarker();
   removeTooltip();
+
+  // Notify popup that selection has stopped (for UI sync when popup stays open)
+  chrome.runtime.sendMessage({ action: 'selectionStopped' }).catch(() => {
+    // Ignore if popup is not open or doesn't have listener
+  });
 }
 
 // ============================================

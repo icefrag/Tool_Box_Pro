@@ -20,6 +20,7 @@ export class XpathTool extends BaseTool {
     this.icon = '🔍';
 
     this.copyMode = COPY_OPTIONS.BOTH; // 默认两者都复制
+    this.isSelectionActive = false; // Track whether selection mode is active
     this.element = null;
     this.createElement();
   }
@@ -80,7 +81,13 @@ export class XpathTool extends BaseTool {
 
   setupEventListeners() {
     const startBtn = this.element.querySelector('#start-xpath');
-    startBtn.addEventListener('click', () => this.startSelection());
+    startBtn.addEventListener('click', () => {
+      if (this.isSelectionActive) {
+        this.stopSelection();
+      } else {
+        this.startSelection();
+      }
+    });
 
     // 配置选项变化监听
     const radioButtons = this.element.querySelectorAll('input[name="copy-mode"]');
@@ -89,6 +96,16 @@ export class XpathTool extends BaseTool {
         this.saveSettings(e.target.value);
       });
     });
+
+    // Listen for selection stopped notifications (e.g., from ESC key in page)
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'selectionStopped' && this.isSelectionActive) {
+        this.updateUiToInactive();
+        this.isSelectionActive = false;
+        sendResponse({ received: true });
+      }
+      return true;
+    });
   }
 
   async initialize() {
@@ -96,7 +113,35 @@ export class XpathTool extends BaseTool {
     if (!this.element) {
       this.createElement();
     }
+
+    // Check if selection is already active when popup is reopened
+    this.detectSelectionState();
+
     this.log('XPath Helper 工具初始化完成');
+  }
+
+  async detectSelectionState() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        // Ping content script to see if it's running
+        chrome.tabs.sendMessage(tab.id, { action: 'ping' }, (response) => {
+          if (chrome.runtime.lastError) {
+            // No connection = selection not active
+            this.isSelectionActive = false;
+            this.updateUiToInactive();
+          } else {
+            // Connection successful = selection might be active
+            // Assume it's active - user can click stop to exit
+            this.isSelectionActive = true;
+            this.updateUiToActive();
+          }
+        });
+      }
+    } catch (err) {
+      // Ignore detection errors, default to inactive
+      this.isSelectionActive = false;
+    }
   }
 
   async injectContentScript() {
@@ -161,16 +206,9 @@ export class XpathTool extends BaseTool {
         });
       });
 
-      // 更新状态
-      statusEl.textContent = '已进入选择模式，请点击页面元素（ESC退出）';
-      statusEl.className = 'xpath-status success';
-      startBtn.textContent = '选择模式进行中...';
-      startBtn.disabled = true;
-
-      // 关闭弹窗，让用户去页面上选择
-      setTimeout(() => {
-        window.close();
-      }, 500);
+      // Update UI to active state
+      this.updateUiToActive();
+      this.isSelectionActive = true;
 
     } catch (error) {
       console.error('XPath Helper 启动失败:', error);
@@ -179,6 +217,65 @@ export class XpathTool extends BaseTool {
       startBtn.textContent = '开始选择元素';
       startBtn.disabled = false;
     }
+  }
+
+  async stopSelection() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        await new Promise((resolve, reject) => {
+          chrome.tabs.sendMessage(tab.id, { action: 'stopSelection' }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+      }
+
+      // Restore UI to inactive state
+      this.updateUiToInactive();
+      this.isSelectionActive = false;
+
+    } catch (error) {
+      console.error('XPath Helper 停止失败:', error);
+      const statusEl = this.element.querySelector('#xpath-status');
+      statusEl.textContent = '停止失败: ' + error.message;
+      statusEl.className = 'xpath-status error';
+    }
+  }
+
+  updateUiToInactive() {
+    const statusEl = this.element.querySelector('#xpath-status');
+    const startBtn = this.element.querySelector('#start-xpath');
+    const radioButtons = this.element.querySelectorAll('input[name="copy-mode"]');
+
+    statusEl.classList.add('hidden');
+    startBtn.textContent = '开始选择元素';
+    startBtn.disabled = false;
+
+    // Re-enable copy option radios
+    radioButtons.forEach(radio => {
+      radio.disabled = false;
+    });
+  }
+
+  updateUiToActive() {
+    const statusEl = this.element.querySelector('#xpath-status');
+    const startBtn = this.element.querySelector('#start-xpath');
+    const radioButtons = this.element.querySelectorAll('input[name="copy-mode"]');
+
+    statusEl.textContent = '已进入选择模式，请点击页面元素（ESC退出）';
+    statusEl.className = 'xpath-status success';
+    statusEl.classList.remove('hidden');
+    startBtn.textContent = '停止选择';
+    startBtn.disabled = false;
+
+    // Disable copy option radios to prevent changes during selection
+    radioButtons.forEach(radio => {
+      radio.disabled = true;
+    });
   }
 
   async execute() {
