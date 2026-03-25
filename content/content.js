@@ -516,6 +516,16 @@ function handleMouseDown(event) {
       // Silently ignore copy failures
     });
   }
+
+  // Send selection result to popup for display
+  chrome.runtime.sendMessage({
+    action: 'selectionResult',
+    elementTag: target.tagName,
+    xpath: smartXPath,
+    selector: selector
+  }).catch(() => {
+    // Ignore if popup is not open to receive
+  });
 }
 
 function handleClick(event) {
