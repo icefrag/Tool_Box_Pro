@@ -53,6 +53,19 @@ export class XpathTool extends BaseTool {
         <button id="start-xpath" class="primary-button">开始选择元素</button>
       </div>
       <div id="xpath-status" class="xpath-status hidden"></div>
+      <div id="xpath-result" class="xpath-result hidden">
+        <div class="xpath-result-header">✅ 已选择: <span id="result-element-tag"></span></div>
+        <div class="xpath-result-row">
+          <div class="xpath-result-label">XPath:</div>
+          <code id="result-xpath" class="xpath-result-code"></code>
+          <button class="xpath-result-copy-btn" data-type="xpath">复制</button>
+        </div>
+        <div class="xpath-result-row">
+          <div class="xpath-result-label">Selector:</div>
+          <code id="result-selector" class="xpath-result-code"></code>
+          <button class="xpath-result-copy-btn" data-type="selector">复制</button>
+        </div>
+      </div>
     `;
 
     this.loadSettings();
