@@ -314,6 +314,25 @@ export class XpathTool extends BaseTool {
     });
   }
 
+  showResult(elementTag, xpath, selector) {
+    const resultArea = this.element.querySelector('#xpath-result');
+    const elementTagSpan = this.element.querySelector('#result-element-tag');
+    const xpathCode = this.element.querySelector('#result-xpath');
+    const selectorCode = this.element.querySelector('#result-selector');
+
+    elementTagSpan.textContent = elementTag.toLowerCase();
+    xpathCode.textContent = xpath;
+    selectorCode.textContent = selector;
+    resultArea.classList.remove('hidden');
+  }
+
+  clearResult() {
+    const resultArea = this.element.querySelector('#xpath-result');
+    if (resultArea) {
+      resultArea.classList.add('hidden');
+    }
+  }
+
   async execute() {
     await this.startSelection();
     return { success: true, message: '已进入选择模式' };
