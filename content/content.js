@@ -24,6 +24,9 @@ let _tooltip = null;
 // Copy mode: 'both' | 'xpath' | 'selector'
 let _copyMode = 'both';
 
+// Visibility change handler reference
+let _handleVisibilityChange = null;
+
 // ============================================
 // XPath Generation Functions
 // ============================================
@@ -611,6 +614,14 @@ function startSelection(copyMode = 'both') {
   _tooltip.style.display = 'block';
   _tooltip.querySelector('.xpath-helper-hint').textContent = '点击页面元素获取路径 (ESC退出)';
 
+  // Auto-exit when tab becomes hidden (fallback for ESC being intercepted)
+  _handleVisibilityChange = function() {
+    if (document.hidden && _selectionActive) {
+      stopSelection();
+    }
+  };
+  document.addEventListener('visibilitychange', _handleVisibilityChange);
+
   // Clear previous selection
   window._selectedElement = null;
   if (_previousHighlight) {
@@ -635,6 +646,11 @@ function stopSelection() {
   document.removeEventListener('mouseout', handleMouseOut, true);
   window.removeEventListener('scroll', handleScroll, true);
   window.removeEventListener('resize', handleResize);
+
+  if (_handleVisibilityChange) {
+    document.removeEventListener('visibilitychange', _handleVisibilityChange);
+    _handleVisibilityChange = null;
+  }
 
   if (_previousHighlight) {
     _previousHighlight.classList.remove('xpath-helper-highlight');
