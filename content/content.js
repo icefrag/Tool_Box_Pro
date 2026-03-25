@@ -533,6 +533,7 @@ function handleMouseUp(event) {
 function handleKeyDown(event) {
   // ESC key to exit selection mode
   if (event.key === 'Escape' && _selectionActive) {
+    event.stopImmediatePropagation();
     stopSelection();
   }
 }
@@ -598,7 +599,7 @@ function startSelection(copyMode = 'both') {
   document.addEventListener('mousedown', handleMouseDown, true);
   document.addEventListener('mouseup', handleMouseUp, true);
   document.addEventListener('click', handleClick, true);
-  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keydown', handleKeyDown, true);
   document.addEventListener('mouseover', handleMouseOver, true);
   document.addEventListener('mouseout', handleMouseOut, true);
   window.addEventListener('scroll', handleScroll, true);
@@ -629,7 +630,7 @@ function stopSelection() {
   document.removeEventListener('mousedown', handleMouseDown, true);
   document.removeEventListener('mouseup', handleMouseUp, true);
   document.removeEventListener('click', handleClick, true);
-  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener('keydown', handleKeyDown, true);
   document.removeEventListener('mouseover', handleMouseOver, true);
   document.removeEventListener('mouseout', handleMouseOut, true);
   window.removeEventListener('scroll', handleScroll, true);
