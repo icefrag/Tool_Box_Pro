@@ -300,26 +300,26 @@ function createTooltip() {
   _tooltip = document.createElement('div');
   _tooltip.id = 'xpath-helper-tooltip';
   _tooltip.innerHTML = `
-    <div class="xpath-helper-tooltip-content">
-      <div class="xpath-helper-tooltip-header">
-        <span class="xpath-helper-title">XPath Helper</span>
-        <span class="xpath-helper-hint-inline">按 ESC 退出</span>
-      </div>
-      <div class="xpath-helper-paths">
-        <div class="xpath-helper-path-group">
-          <span class="xpath-helper-label">XPath:</span>
-          <code class="xpath-helper-xpath"></code>
-          <button class="xpath-helper-copy-btn" data-type="xpath">复制</button>
-        </div>
-        <div class="xpath-helper-path-group">
-          <span class="xpath-helper-label">Selector:</span>
-          <code class="xpath-helper-selector"></code>
-          <button class="xpath-helper-copy-btn" data-type="selector">复制</button>
-        </div>
-      </div>
-      <div class="xpath-helper-hint">点击页面元素获取路径</div>
+  <div class="xpath-helper-tooltip-content">
+    <div class="xpath-helper-tooltip-header">
+      <span class="xpath-helper-title">XPath Helper</span>
+      <button class="xpath-helper-exit-btn" title="退出选择模式">✕ 退出</button>
     </div>
-  `;
+    <div class="xpath-helper-paths">
+      <div class="xpath-helper-path-group">
+        <span class="xpath-helper-label">XPath:</span>
+        <code class="xpath-helper-xpath"></code>
+        <button class="xpath-helper-copy-btn" data-type="xpath">复制</button>
+      </div>
+      <div class="xpath-helper-path-group">
+        <span class="xpath-helper-label">Selector:</span>
+        <code class="xpath-helper-selector"></code>
+        <button class="xpath-helper-copy-btn" data-type="selector">复制</button>
+      </div>
+    </div>
+    <div class="xpath-helper-hint">点击页面元素获取路径</div>
+  </div>
+`;
   document.body.appendChild(_tooltip);
 
   // Bind event listeners
@@ -335,6 +335,12 @@ function createTooltip() {
         setTimeout(() => btn.textContent = '复制', 1500);
       });
     });
+  });
+
+  // Bind exit button
+  _tooltip.querySelector('.xpath-helper-exit-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    stopSelection();
   });
 
   // Prevent tooltip clicks from triggering selection
