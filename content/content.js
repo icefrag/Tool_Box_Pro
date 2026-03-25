@@ -510,8 +510,15 @@ function handleMouseDown(event) {
 
 function handleClick(event) {
   // Check if click is on the tooltip itself
-  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
-    return;
+  if (_tooltip) {
+    const isOurUI = _tooltip.contains(event.target) ||
+                    event.target === _tooltip ||
+                    (event.target.closest && event.target.closest('#xpath-helper-tooltip'));
+    if (isOurUI) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
   }
 
   if (!_selectionActive) return;
@@ -522,8 +529,15 @@ function handleClick(event) {
 }
 
 function handleMouseUp(event) {
-  if (_tooltip && (_tooltip.contains(event.target) || event.target === _tooltip)) {
-    return;
+  if (_tooltip) {
+    const isOurUI = _tooltip.contains(event.target) ||
+                    event.target === _tooltip ||
+                    (event.target.closest && event.target.closest('#xpath-helper-tooltip'));
+    if (isOurUI) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
   }
 
   if (!_selectionActive) return;
