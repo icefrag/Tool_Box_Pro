@@ -314,23 +314,6 @@ export class XpathTool extends BaseTool {
     });
   }
 
-  showResult(elementTag, xpath, selector) {
-    const resultEl = this.element.querySelector('#xpath-result');
-    const elementTagEl = this.element.querySelector('#result-element-tag');
-    const xpathEl = this.element.querySelector('#result-xpath');
-    const selectorEl = this.element.querySelector('#result-selector');
-    const statusEl = this.element.querySelector('#xpath-status');
-
-    elementTagEl.textContent = elementTag;
-    xpathEl.textContent = xpath;
-    selectorEl.textContent = selector;
-    resultEl.classList.remove('hidden');
-    statusEl.classList.add('hidden');
-
-    this.isSelectionActive = false;
-    this.updateUiToInactive();
-  }
-
   async execute() {
     await this.startSelection();
     return { success: true, message: '已进入选择模式' };
