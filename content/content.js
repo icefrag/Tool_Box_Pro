@@ -660,6 +660,9 @@ function startSelection(copyMode = 'both') {
 }
 
 function stopSelection() {
+  // 防止重复调用
+  if (!_selectionActive) return;
+
   _selectionActive = false;
   document.body.style.cursor = '';
   document.removeEventListener('mousedown', handleMouseDown, true);
