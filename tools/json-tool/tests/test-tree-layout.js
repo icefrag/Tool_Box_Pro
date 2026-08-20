@@ -74,13 +74,37 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
   assert.deepEqual(edges, ['$.a']);
 }
 
-// 展开行高度撑起子表格：行 y 在其占用空间内居中
+// 紧凑表格：高度只由自身行数决定，不被展开的子表格撑大（用户反馈核心）
 {
   const { rows, tables } = layoutTree(T('{"a": {"x": 1, "y": 2, "z": 3}, "b": 1}'));
-  const sub = tables.get('$.a');
-  assert.equal(sub.h, LAYOUT.ROW_H * 3 + LAYOUT.PAD_Y * 2);
-  const rowA = rows.get('$.a');
-  assert.equal(rowA.y + LAYOUT.ROW_H / 2, LAYOUT.PAD_Y + sub.h / 2);
+  assert.equal(tables.get('$').h, LAYOUT.ROW_H * 2 + LAYOUT.PAD_Y * 2);
+  assert.equal(tables.get('$.a').h, LAYOUT.ROW_H * 3 + LAYOUT.PAD_Y * 2);
+}
+
+// 行距固定：无展开子表格时行按行高均匀堆叠
+{
+  const { rows } = layoutTree(T('{"a": 1, "b": 2}'));
+  assert.equal(rows.get('$.a').y, LAYOUT.PAD_Y);
+  assert.equal(rows.get('$.b').y, LAYOUT.PAD_Y + LAYOUT.ROW_H);
+}
+
+// 子表格垂直居中于父行中心（空间充足时）
+{
+  const { rows, tables } = layoutTree(T('{"a": {"x": 1, "y": 2}}'));
+  const row = rows.get('$.a');
+  const t = tables.get('$.a');
+  assert.equal(row.y + LAYOUT.ROW_H / 2, t.y + t.h / 2);
+}
+
+// 同层大子表格互不重叠（推挤错开）
+{
+  const json = '{"a": {"a1":1,"a2":2,"a3":3,"a4":4,"a5":5}, "b": {"b1":1,"b2":2,"b3":3,"b4":4,"b5":5}}';
+  const { tables } = layoutTree(T(json));
+  const ta = tables.get('$.a');
+  const tb = tables.get('$.b');
+  const overlap = ta.y < tb.y + tb.h && tb.y < ta.y + ta.h;
+  assert.equal(overlap, false);
+  assert.ok(tb.y >= ta.y + ta.h + LAYOUT.SUBTREE_GAP - 0.001);
 }
 
 // 空对象/空数组行：不产生子表格（不可展开）
@@ -106,15 +130,16 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
   assert.ok(bounds.height >= LAYOUT.ROW_H + LAYOUT.PAD_Y * 2);
 }
 
-// 展开行垂直空间 >= 其子表格高度（嵌套两层）
+// 展开行的「子树盒」垂直居中于该行（嵌套两层）
 {
   const json = JSON.stringify({ a: { b: { c: 1, d: 2, e: 3, f: 4, g: 5 } } });
   const { rows, tables } = layoutTree(T(json));
   const rowA = rows.get('$.a');
   const tableA = tables.get('$.a');
   const tableB = tables.get('$.a.b');
-  // $.a 行垂直居中于其子表格；孙表格亦居中于同一中轴
-  assert.equal(rowA.y + LAYOUT.ROW_H / 2, tableA.y + tableA.h / 2);
-  assert.equal(tableB.y + tableB.h / 2, tableA.y + tableA.h / 2);
-  assert.ok(tableA.h >= LAYOUT.ROW_H * 5);
+  // $.a 的子树盒由孙表格撑起，其中心对齐 $.a 行中心
+  assert.equal(rowA.y + LAYOUT.ROW_H / 2, tableB.y + tableB.h / 2);
+  // 父表格保持紧凑（自身 1 行），孙表格 5 行
+  assert.equal(tableA.h, LAYOUT.ROW_H + LAYOUT.PAD_Y * 2);
+  assert.equal(tableB.h, LAYOUT.ROW_H * 5 + LAYOUT.PAD_Y * 2);
 }
