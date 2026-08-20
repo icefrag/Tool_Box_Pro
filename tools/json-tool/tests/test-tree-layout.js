@@ -60,11 +60,18 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
 // 折叠的复合行：不产生子表格，行只占一行高
 {
   const tree = T('{"a": {"x": 1, "y": 2}}');
-  const { rows, tables } = layoutTree(tree, new Set(['$.a']));
+  const { rows, tables, edges } = layoutTree(tree, new Set(['$.a']));
   assert.ok(!tables.has('$.a'));
   assert.ok(rows.has('$.a'));
   assert.ok(!rows.has('$.a.x'));
   assert.equal(tables.size, 1);
+  assert.deepEqual(edges, []);
+}
+
+// edges：每个非根表格一条连线（回归：行与子表格同 path，不可用节点引用判异）
+{
+  const { edges } = layoutTree(T('{"a": {"x": 1}, "b": 2}'));
+  assert.deepEqual(edges, ['$.a']);
 }
 
 // 展开行高度撑起子表格：行 y 在其占用空间内居中

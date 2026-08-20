@@ -1,7 +1,9 @@
 // 表格化横向树布局（纯函数，无 DOM / chrome API 依赖）
 // 每个 object/array 节点渲染为一个表格：子项是表格中的行（一行两列：key | 值/徽标）。
 // 复合行展开后，其子表格挂在右一列，行垂直居中于子表格；折叠行只占一行高。
-// 返回 { rows: Map<path,{x,y,w,node}>, tables: Map<path,{x,y,w,h,node}>, visible: Set<path>, bounds }
+// 返回 { rows: Map<path,{x,y,w,node}>, tables: Map<path,{x,y,w,h,node}>,
+//        visible: Set<path>, edges: path[], bounds }
+// edges：每个非根表格的 path（行与子表格同节点，渲染层据此连线）
 export const LAYOUT = { TABLE_W: 300, ROW_H: 26, TABLE_GAP: 60, PAD_X: 8, PAD_Y: 6 };
 const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
 
@@ -50,5 +52,10 @@ export function layoutTree(root, collapsed = new Set()) {
     maxX = Math.max(maxX, t.x + t.w);
     maxY = Math.max(maxY, t.y + t.h);
   }
-  return { rows, tables, visible, bounds: { width: Math.max(maxX, 1), height: Math.max(maxY, 1) } };
+  // 每个非根表格对应一条连线：行（=表格自身节点）右缘 → 子表格左缘
+  const edges = [];
+  for (const [path, t] of tables) {
+    if (t.node.parent) edges.push(path);
+  }
+  return { rows, tables, visible, edges, bounds: { width: Math.max(maxX, 1), height: Math.max(maxY, 1) } };
 }

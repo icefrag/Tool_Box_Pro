@@ -127,14 +127,11 @@ export class TreeGraph {
       return;
     }
     this._layout = layoutTree(root, collapsed);
-    const { rows, tables } = this._layout;
+    const { rows, tables, edges } = this._layout;
 
-    // 连线：展开行右缘中点 → 子表格左缘中点
-    for (const [path, row] of rows) {
-      const table = tables.get(path);
-      if (table && table.node !== row.node) {
-        this.edgesLayer.appendChild(this._edgePath(row, table));
-      }
+    // 连线：每个非根表格对应一条「行右缘 → 子表格左缘」的连线
+    for (const path of edges) {
+      this.edgesLayer.appendChild(this._edgePath(rows.get(path), tables.get(path)));
     }
     // 表格与行
     for (const table of tables.values()) {
