@@ -36,6 +36,7 @@ class JsonTreeApp {
       onCursor: (offset) => this.handleCursor(offset),
     });
     this.graph = new TreeGraph($('graph-svg'));
+    this.graph.attachMinimap($('minimap-svg'));
     this.graph.onNodeClick = (node) => this.editor.selectRange(node.start, node.end);
     this.graph.onToggleCollapse = (node) => this.toggleCollapse(node);
 

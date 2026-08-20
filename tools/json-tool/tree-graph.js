@@ -35,12 +35,110 @@ export class TreeGraph {
     this.rowEls = new Map();
     this._layout = null;
 
+    // 缩略图（minimap）状态
+    this.minimapSvg = null;
+    this._mmRoot = null;
+    this._mmContent = null;
+    this._mmViewport = null;
+    this._mm = null; // { s: 缩放比, ox, oy: 内容居中偏移 }
+
     this.edgesLayer = svgEl('g', { class: 'tg-edges' });
     this.nodesLayer = svgEl('g', { class: 'tg-tables' });
     this.content = svgEl('g', { class: 'tg-content' });
     this.content.append(this.edgesLayer, this.nodesLayer);
     this.svg.append(this.content);
     this._bindCanvasEvents();
+  }
+
+  // 挂载缩略图：预览整树 + 视口框 + 点击/拖动跳转
+  attachMinimap(minimapSvg) {
+    this.minimapSvg = minimapSvg;
+    minimapSvg.innerHTML = '';
+    this._mmContent = svgEl('g', { class: 'mm-content' });
+    this._mmViewport = svgEl('rect', { class: 'mm-viewport' });
+    this._mmRoot = svgEl('g', {});
+    this._mmRoot.append(this._mmContent, this._mmViewport);
+    minimapSvg.append(this._mmRoot);
+    this._bindMinimapEvents();
+    if (this._layout) this._renderMinimap();
+  }
+
+  _bindMinimapEvents() {
+    const svg = this.minimapSvg;
+    let down = false;
+    const jump = (e) => {
+      if (!this._mm) return;
+      const rect = svg.getBoundingClientRect();
+      const cx = ((e.clientX - rect.left) - this._mm.ox) / this._mm.s;
+      const cy = ((e.clientY - rect.top) - this._mm.oy) / this._mm.s;
+      const r = this.svg.getBoundingClientRect();
+      this.tx = r.width / 2 - cx * this.scale;
+      this.ty = r.height / 2 - cy * this.scale;
+      this._applyTransform();
+    };
+    svg.addEventListener('pointerdown', (e) => {
+      down = true;
+      svg.setPointerCapture(e.pointerId);
+      jump(e);
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (down) jump(e);
+    });
+    svg.addEventListener('pointerup', () => { down = false; });
+    svg.addEventListener('pointercancel', () => { down = false; });
+  }
+
+  _renderMinimap() {
+    const container = this.minimapSvg && this.minimapSvg.parentElement;
+    if (!container || !this._layout) return;
+    container.classList.remove('hidden');
+    const { tables, edges, bounds } = this._layout;
+    const r = this.minimapSvg.getBoundingClientRect();
+    if (!r.width || !r.height || !bounds.width) return;
+    const s = Math.min(r.width / bounds.width, r.height / bounds.height, 1);
+    const ox = (r.width - bounds.width * s) / 2;
+    const oy = (r.height - bounds.height * s) / 2;
+    this._mm = { s, ox, oy };
+    this._mmRoot.setAttribute('transform', `translate(${ox},${oy}) scale(${s})`);
+    this._mmContent.innerHTML = '';
+    for (const t of tables.values()) {
+      this._mmContent.appendChild(svgEl('rect', {
+        x: t.x,
+        y: t.y,
+        width: t.w,
+        height: t.h,
+        fill: '#ffffff',
+        stroke: TYPE_COLORS[t.node.type] || '#999999',
+        'stroke-width': 1 / s,
+      }));
+    }
+    for (const path of edges) {
+      const row = this._layout.rows.get(path);
+      const table = tables.get(path);
+      this._mmContent.appendChild(svgEl('path', {
+        class: 'tg-edge',
+        stroke: '#c5cbe0',
+        'stroke-width': 1 / s,
+        fill: 'none',
+        d: this._edgePath(row, table).getAttribute('d'),
+      }));
+    }
+    this._syncMinimapViewport();
+  }
+
+  _syncMinimapViewport() {
+    if (!this._mm || !this._mmViewport) return;
+    const r = this.svg.getBoundingClientRect();
+    this._mmViewport.setAttribute('x', -this.tx / this.scale);
+    this._mmViewport.setAttribute('y', -this.ty / this.scale);
+    this._mmViewport.setAttribute('width', r.width / this.scale);
+    this._mmViewport.setAttribute('height', r.height / this.scale);
+  }
+
+  _hideMinimap() {
+    if (this.minimapSvg && this.minimapSvg.parentElement) {
+      this.minimapSvg.parentElement.classList.add('hidden');
+    }
   }
 
   _bindCanvasEvents() {
@@ -83,6 +181,7 @@ export class TreeGraph {
 
   _applyTransform() {
     this.content.setAttribute('transform', `translate(${this.tx},${this.ty}) scale(${this.scale})`);
+    this._syncMinimapViewport();
   }
 
   zoomIn() {
@@ -124,6 +223,7 @@ export class TreeGraph {
     this.rowEls = new Map();
     if (!root) {
       this._layout = null;
+      this._hideMinimap();
       return;
     }
     this._layout = layoutTree(root, collapsed);
@@ -139,6 +239,7 @@ export class TreeGraph {
     }
     this._updateStates();
     if (fit) this.fitView();
+    this._renderMinimap();
   }
 
   _edgePath(row, table) {
