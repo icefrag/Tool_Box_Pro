@@ -2,6 +2,7 @@
 export const TOOL_TYPES = {
   COOKIE: 'cookie-tool',
   XPATH: 'xpath-helper',
+  JSON_TREE: 'json-tree-tool',
   // 未来工具类型在这里添加
 };
 

@@ -2,6 +2,7 @@
 import { TOOL_TYPES, UI_EVENTS } from '../utils/constants.js';
 import { CookieTool } from '../tools/cookie-tool/tool.js';
 import { XpathTool } from '../tools/xpath-helper/tool.js';
+import { JsonTool } from '../tools/json-tool/tool.js';
 
 class ToolManager {
   constructor() {
@@ -21,6 +22,7 @@ class ToolManager {
     // 注册所有工具
     this.registerTool(new CookieTool());
     this.registerTool(new XpathTool());
+    this.registerTool(new JsonTool());
     // 未来工具在这里注册：
     // this.registerTool(new FutureTool());
   }
