@@ -27,7 +27,7 @@
 ### Task 1: Vendor CodeMirror 5 到 lib/
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -66,7 +66,7 @@ git commit -m "chore: vendor CodeMirror 5.65.16 for JSON tree tool"
 ### Task 2: package.json + 带位置信息的 JSON 解析器（TDD）
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -384,7 +384,7 @@ git commit -m "feat(json-tool): add position-aware JSON parser with node tests"
 ### Task 3: 树模型 tree-model.js（TDD）
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2
 **Parallelizable:** Yes
@@ -546,7 +546,7 @@ git commit -m "feat(json-tool): add tree model with path, ranges and parent link
 ### Task 4: 树布局 tree-layout.js（TDD）
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 3
 **Parallelizable:** Yes
@@ -668,7 +668,7 @@ git commit -m "feat(json-tool): add horizontal tidy tree layout"
 ### Task 5: 搜索 search.js（TDD）
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 3
 **Parallelizable:** Yes
@@ -754,7 +754,7 @@ git commit -m "feat(json-tool): add search matching over keys and scalar values"
 ### Task 6: 全屏页骨架 index.html + tool.css
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 1
 **Parallelizable:** Yes
@@ -995,7 +995,7 @@ git commit -m "feat(json-tool): add fullscreen page skeleton with toolbar and sp
 ### Task 7: 编辑器封装 editor.js
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 1, Task 6
 **Parallelizable:** Yes
@@ -1120,7 +1120,7 @@ git commit -m "feat(json-tool): add CodeMirror editor wrapper with sync and sear
 ### Task 8: 树图渲染 tree-graph.js
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 4, Task 6
 **Parallelizable:** Yes
@@ -1413,7 +1413,7 @@ git commit -m "feat(json-tool): add SVG tree graph with zoom, pan and collapse"
 ### Task 9: 主入口 main.js 组装全部交互
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3, Task 4, Task 5, Task 7, Task 8
 **Parallelizable:** No（依赖全部核心模块，是集成点）
@@ -1676,7 +1676,7 @@ git commit -m "feat(json-tool): wire editor, parser pipeline, graph, search and 
 ### Task 10: JsonTool 启动器 + popup 注册
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -1808,7 +1808,7 @@ git commit -m "feat(json-tool): register JSON tree tool launcher in popup"
 ### Task 11: 端到端验收 + 文档同步
 
 **状态**
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 9, Task 10
 **Parallelizable:** No（收尾任务，依赖全部完成）
