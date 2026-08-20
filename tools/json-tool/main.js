@@ -199,6 +199,7 @@ class JsonTreeApp {
       this.setStatus('✓ 有效 JSON', 'ok');
       this.tree = buildTree(res.ast);
       this.autoCollapsed = computeDefaultCollapsed(this.tree);
+      this.lastFocusId = null; // 树重建后光标定位状态失效
       $('graph-empty').classList.add('hidden');
       this.refreshGraph(true);
       if ($('search-input').value) this.handleSearch();
@@ -217,7 +218,25 @@ class JsonTreeApp {
   handleCursor(offset) {
     if (!this.tree) return;
     const node = findNodeAt(this.tree, offset);
-    this.graph.setFocus(node ? node.id : null);
+    const id = node ? node.id : null;
+    this.graph.setFocus(id);
+    if (!id) {
+      this.lastFocusId = null;
+      return;
+    }
+    if (id === this.lastFocusId) return; // 同一节点内移动光标不重复定位，避免打字时画布抖动
+    this.lastFocusId = id;
+    // 目标行可能被折叠隐藏：展开其全部祖先后定位居中
+    let n = node;
+    while (n && n.parent) {
+      if (this.effectiveCollapsed().has(n.parent.id)) {
+        this.userCollapsed.delete(n.parent.id);
+        this.userExpanded.add(n.parent.id);
+      }
+      n = n.parent;
+    }
+    this.refreshGraph(false);
+    this.graph.focusNode(id);
   }
 
   setError(err) {
