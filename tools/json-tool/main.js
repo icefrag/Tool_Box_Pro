@@ -41,6 +41,7 @@ class JsonTreeApp {
 
     this.bindToolbar();
     this.bindSearch();
+    this.bindSplitter();
     this.editor.setValue(SAMPLE_JSON);
     this.handleInput();
   }
@@ -91,6 +92,44 @@ class JsonTreeApp {
     $('zoom-out').addEventListener('click', () => this.graph.zoomOut());
     $('zoom-fit').addEventListener('click', () => this.graph.fitView());
     $('zoom-reset').addEventListener('click', () => this.graph.resetView());
+  }
+
+  // 拖动分隔条调整编辑器/树图分栏宽度（20% ~ 80%）
+  bindSplitter() {
+    const splitter = $('jt-splitter');
+    const pane = $('editor-pane');
+    const main = document.querySelector('.jt-main');
+    let dragging = false;
+
+    splitter.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      splitter.classList.add('active');
+      splitter.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    splitter.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const rect = main.getBoundingClientRect();
+      const pct = Math.min(0.8, Math.max(0.2, (e.clientX - rect.left) / rect.width));
+      pane.style.flexBasis = (pct * 100).toFixed(2) + '%';
+      this.scheduleEditorRefresh();
+    });
+    const stop = () => {
+      if (!dragging) return;
+      dragging = false;
+      splitter.classList.remove('active');
+      this.editor.refresh();
+    };
+    splitter.addEventListener('pointerup', stop);
+    splitter.addEventListener('pointercancel', stop);
+  }
+
+  scheduleEditorRefresh() {
+    if (this._refreshRaf) return;
+    this._refreshRaf = requestAnimationFrame(() => {
+      this._refreshRaf = null;
+      this.editor.refresh();
+    });
   }
 
   bindSearch() {

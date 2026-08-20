@@ -1,4 +1,4 @@
-// SVG 树图：节点卡片渲染、缩放/拖拽、折叠切换、搜索/焦点高亮
+// SVG 树图（表格布局）：每个 object/array 渲染为一个表格，子项为行；缩放/拖拽、折叠切换、搜索/焦点高亮
 // 折叠状态由调用方（main.js）持有，本组件只读 + 通过 onToggleCollapse 回调通知
 import { layoutTree, LAYOUT } from './tree-layout.js';
 
@@ -27,16 +27,16 @@ export class TreeGraph {
     this.matchedPaths = null; // Set<string> | null，null 表示无搜索
     this.currentPath = null;  // 搜索循环当前项
     this.focusPath = null;    // 编辑器光标联动焦点
-    this.onNodeClick = null;        // (node) => void，节点选中（联动编辑器）
-    this.onToggleCollapse = null;   // (node) => void，折叠徽标点击（main 更新折叠集）
+    this.onNodeClick = null;        // (node) => void，行选中（联动编辑器）
+    this.onToggleCollapse = null;   // (node) => void，行徽标点击（main 更新折叠集）
     this.scale = 1;
     this.tx = 0;
     this.ty = 0;
-    this.nodeEls = new Map();
+    this.rowEls = new Map();
     this._layout = null;
 
     this.edgesLayer = svgEl('g', { class: 'tg-edges' });
-    this.nodesLayer = svgEl('g', { class: 'tg-nodes' });
+    this.nodesLayer = svgEl('g', { class: 'tg-tables' });
     this.content = svgEl('g', { class: 'tg-content' });
     this.content.append(this.edgesLayer, this.nodesLayer);
     this.svg.append(this.content);
@@ -54,7 +54,7 @@ export class TreeGraph {
     let lastX = 0;
     let lastY = 0;
     this.svg.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.tg-node')) return; // 节点区域不触发画布拖拽
+      if (e.target.closest('.tg-row')) return; // 行区域不触发画布拖拽
       dragging = true;
       lastX = e.clientX;
       lastY = e.clientY;
@@ -121,41 +121,34 @@ export class TreeGraph {
     this.collapsed = collapsed;
     this.edgesLayer.innerHTML = '';
     this.nodesLayer.innerHTML = '';
-    this.nodeEls = new Map();
+    this.rowEls = new Map();
     if (!root) {
       this._layout = null;
       return;
     }
     this._layout = layoutTree(root, collapsed);
-    const { positions, visible } = this._layout;
-    for (const node of this._walkVisible(root, visible)) {
-      const p = positions.get(node.id);
-      if (node.parent && visible.has(node.parent.id)) {
-        this.edgesLayer.appendChild(this._edgePath(positions.get(node.parent.id), p));
+    const { rows, tables } = this._layout;
+
+    // 连线：展开行右缘中点 → 子表格左缘中点
+    for (const [path, row] of rows) {
+      const table = tables.get(path);
+      if (table && table.node !== row.node) {
+        this.edgesLayer.appendChild(this._edgePath(row, table));
       }
-      const card = this._nodeCard(node, p);
-      this.nodeEls.set(node.id, card);
-      this.nodesLayer.appendChild(card);
+    }
+    // 表格与行
+    for (const table of tables.values()) {
+      this.nodesLayer.appendChild(this._tableCard(table, rows));
     }
     this._updateStates();
     if (fit) this.fitView();
   }
 
-  *_walkVisible(node, visible) {
-    if (!visible.has(node.id)) return;
-    yield node;
-    if (node.children && !this.collapsed.has(node.id)) {
-      for (const child of node.children) {
-        yield* this._walkVisible(child, visible);
-      }
-    }
-  }
-
-  _edgePath(from, to) {
-    const x1 = from.x + LAYOUT.CARD_W;
-    const y1 = from.y + LAYOUT.CARD_H / 2;
-    const x2 = to.x;
-    const y2 = to.y + LAYOUT.CARD_H / 2;
+  _edgePath(row, table) {
+    const x1 = row.x + row.w;
+    const y1 = row.y + LAYOUT.ROW_H / 2;
+    const x2 = table.x;
+    const y2 = table.y + table.h / 2;
     const dx = Math.max(30, (x2 - x1) / 2);
     return svgEl('path', {
       class: 'tg-edge',
@@ -163,75 +156,115 @@ export class TreeGraph {
     });
   }
 
-  _nodeCard(node, p) {
-    const color = TYPE_COLORS[node.type] || '#333';
+  _tableCard(table, rows) {
+    const node = table.node;
     const g = svgEl('g', {
-      class: 'tg-node',
-      transform: `translate(${p.x},${p.y})`,
+      class: 'tg-table',
+      transform: `translate(${table.x},${table.y})`,
       'data-path': node.id,
     });
     g.appendChild(svgEl('rect', {
-      class: 'tg-card',
-      width: LAYOUT.CARD_W,
-      height: LAYOUT.CARD_H,
+      class: 'tg-table-bg',
+      width: table.w,
+      height: table.h,
       rx: 8,
       fill: '#ffffff',
-      stroke: color,
+      stroke: TYPE_COLORS[node.type] || '#999999',
       'stroke-width': 1.5,
     }));
-    g.appendChild(svgEl('circle', { cx: 12, cy: LAYOUT.CARD_H / 2, r: 5, fill: color }));
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        const rowEl = this._rowCard(child, rows.get(child.id));
+        this.rowEls.set(child.id, rowEl);
+        g.appendChild(rowEl);
+      }
+    } else {
+      // 空对象/空数组/标量根：占位行
+      const empty = svgEl('text', {
+        class: 'tg-empty-row',
+        x: LAYOUT.PAD_X + 4,
+        y: LAYOUT.PAD_Y + LAYOUT.ROW_H / 2 + 4,
+      });
+      empty.textContent = node.children ? '（空）' : node.valueText;
+      g.appendChild(empty);
+    }
+    return g;
+  }
 
-    const label = svgEl('text', { class: 'tg-label', x: 24, y: LAYOUT.CARD_H / 2 + 4 });
-    label.textContent = node.label.length > 16 ? node.label.slice(0, 15) + '…' : node.label;
-    g.appendChild(label);
+  _rowCard(node, row) {
+    const color = TYPE_COLORS[node.type] || '#333333';
+    const expandable = node.children && node.children.length > 0;
+    const isExpanded = expandable && !this.collapsed.has(node.id);
+    const g = svgEl('g', {
+      class: 'tg-row',
+      transform: `translate(${row.x},${row.y})`,
+      'data-path': node.id,
+    });
+    g.appendChild(svgEl('rect', { class: 'tg-row-bg', width: row.w, height: LAYOUT.ROW_H, rx: 4 }));
 
-    if (node.valueText) {
-      const value = svgEl('text', {
-        class: 'tg-value',
-        x: LAYOUT.CARD_W - 12,
-        y: LAYOUT.CARD_H / 2 + 4,
+    const key = svgEl('text', { class: 'tg-key', x: 4, y: LAYOUT.ROW_H / 2 + 4 });
+    key.textContent = node.label.length > 16 ? node.label.slice(0, 15) + '…' : node.label;
+    g.appendChild(key);
+
+    if (node.children) {
+      // 复合行：{n} / [n] 徽标（空容器显示 {} / []），徽标可点击展开/收起
+      const badgeText = node.children.length === 0
+        ? (node.type === 'object' ? '{}' : '[]')
+        : (node.type === 'object' ? `{${node.childCount}}` : `[${node.childCount}]`);
+      if (isExpanded) {
+        const bw = badgeText.length * 7.5 + 12;
+        g.appendChild(svgEl('rect', {
+          x: row.w - 4 - bw,
+          y: 3,
+          width: bw,
+          height: LAYOUT.ROW_H - 6,
+          rx: 4,
+          fill: color,
+        }));
+      }
+      const badge = svgEl('text', {
+        class: 'tg-badge',
+        x: row.w - 10,
+        y: LAYOUT.ROW_H / 2 + 4,
+        'text-anchor': 'end',
+        fill: isExpanded ? '#ffffff' : color,
+      });
+      badge.textContent = badgeText;
+      g.appendChild(badge);
+      if (expandable) {
+        const hit = svgEl('rect', {
+          class: 'tg-badge-hit',
+          x: row.w - 64,
+          width: 64,
+          height: LAYOUT.ROW_H,
+          fill: 'transparent',
+        });
+        hit.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this.onToggleCollapse) this.onToggleCollapse(node);
+        });
+        g.appendChild(hit);
+      }
+    } else {
+      const val = svgEl('text', {
+        class: 'tg-val',
+        x: row.w - 4,
+        y: LAYOUT.ROW_H / 2 + 4,
         'text-anchor': 'end',
       });
-      value.textContent = node.valueText;
-      g.appendChild(value);
+      val.textContent = node.valueText;
+      g.appendChild(val);
     }
 
-    if (node.children && node.children.length > 0) {
-      const isCollapsed = this.collapsed.has(node.id);
-      const toggle = svgEl('g', { class: 'tg-toggle' });
-      toggle.appendChild(svgEl('circle', {
-        cx: LAYOUT.CARD_W,
-        cy: LAYOUT.CARD_H / 2,
-        r: 9,
-        fill: isCollapsed ? color : '#ffffff',
-        stroke: color,
-        'stroke-width': 1.5,
-      }));
-      const sign = svgEl('text', {
-        class: 'tg-toggle-sign',
-        x: LAYOUT.CARD_W,
-        y: LAYOUT.CARD_H / 2 + 4,
-        'text-anchor': 'middle',
-        fill: isCollapsed ? '#ffffff' : color,
-      });
-      sign.textContent = isCollapsed ? String(node.childCount) : '−';
-      toggle.appendChild(sign);
-      g.appendChild(toggle);
-    }
-
-    g.addEventListener('click', (e) => {
-      if (e.target.closest('.tg-toggle')) {
-        if (this.onToggleCollapse) this.onToggleCollapse(node);
-      } else if (this.onNodeClick) {
-        this.onNodeClick(node);
-      }
+    g.addEventListener('click', () => {
+      if (this.onNodeClick) this.onNodeClick(node);
     });
     return g;
   }
 
   _updateStates() {
     const hasQuery = this.matchedPaths !== null;
-    for (const [id, el] of this.nodeEls) {
+    for (const [id, el] of this.rowEls) {
       const matched = hasQuery && this.matchedPaths.has(id);
       el.classList.toggle('matched', matched);
       el.classList.toggle('current', this.currentPath === id);
@@ -252,11 +285,13 @@ export class TreeGraph {
   }
 
   focusNode(path) {
-    const p = this._layout && this._layout.positions.get(path);
-    if (!p) return;
+    const layout = this._layout;
+    const target = (layout && layout.rows.get(path)) || (layout && layout.tables.get(path));
+    if (!target) return;
+    const h = target.h || LAYOUT.ROW_H;
     const r = this.svg.getBoundingClientRect();
-    this.tx = r.width / 2 - (p.x + LAYOUT.CARD_W / 2) * this.scale;
-    this.ty = r.height / 2 - (p.y + LAYOUT.CARD_H / 2) * this.scale;
+    this.tx = r.width / 2 - (target.x + target.w / 2) * this.scale;
+    this.ty = r.height / 2 - (target.y + h / 2) * this.scale;
     this._applyTransform();
   }
 }

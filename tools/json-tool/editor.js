@@ -65,6 +65,11 @@ export class JsonEditor {
     }
   }
 
+  // 容器尺寸变化后重算布局（分栏拖动时调用）
+  refresh() {
+    this.cm.refresh();
+  }
+
   // 联动：滚动到区间并高亮背景（树图 → 编辑器）
   selectRange(start, end) {
     const from = this.cm.posFromIndex(start);

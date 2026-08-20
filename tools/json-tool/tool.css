@@ -61,10 +61,21 @@ body {
 /* ── 主区域 ─────────────────────────── */
 .jt-main { flex: 1; display: flex; min-height: 0; }
 
-#editor-pane { flex: 1; min-width: 0; border-right: 1px solid #e0e0e0; }
+/* 默认编辑器:树图 = 4:6，可拖动分隔条调整 */
+#editor-pane { flex: 0 0 40%; min-width: 0; }
 #editor-pane .CodeMirror { height: 100%; font-size: 13px; }
 
-#graph-pane { flex: 1; position: relative; background: #fafbfc; overflow: hidden; }
+.jt-splitter {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: #e4e4ec;
+  transition: background 0.15s;
+}
+
+.jt-splitter:hover,
+.jt-splitter.active { background: #667eea; }
+
+#graph-pane { flex: 1 1 auto; position: relative; background: #fafbfc; overflow: hidden; }
 
 #graph-svg {
   position: absolute;
@@ -134,20 +145,25 @@ body {
 
 .jt-error-bar.hidden { display: none; }
 
-/* ── 树图节点 ───────────────────────── */
+/* ── 树图（表格布局） ───────────────── */
 .tg-edge { fill: none; stroke: #c5cbe0; stroke-width: 1.5; }
 
-.tg-node { cursor: pointer; }
-.tg-node:hover .tg-card { stroke-width: 2.5; }
+.tg-table-bg { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08)); }
 
-.tg-label { font-size: 12px; fill: #333; font-weight: 600; }
-.tg-value { font-size: 11px; fill: #888; font-family: Consolas, Menlo, monospace; }
-.tg-toggle-sign { font-size: 9px; font-weight: 700; pointer-events: none; }
+.tg-row { cursor: pointer; }
+.tg-row-bg { fill: transparent; }
+.tg-row:hover .tg-row-bg { fill: #f0f0fa; }
 
-.tg-node.matched .tg-card { stroke: #f39c12; stroke-width: 2.5; }
-.tg-node.current .tg-card { stroke: #e67e22; stroke-width: 3.5; }
-.tg-node.dim { opacity: 0.22; }
-.tg-node.focused .tg-card { stroke: #667eea; stroke-width: 3; }
+.tg-key { font-size: 12px; fill: #333; font-weight: 600; }
+.tg-val { font-size: 12px; fill: #888; font-family: Consolas, Menlo, monospace; }
+.tg-badge { font-size: 12px; font-weight: 700; font-family: Consolas, Menlo, monospace; }
+.tg-badge-hit { cursor: pointer; }
+.tg-empty-row { font-size: 12px; fill: #aaa; font-family: Consolas, Menlo, monospace; }
+
+.tg-row.matched .tg-row-bg { fill: #fff3e0; }
+.tg-row.current .tg-row-bg { fill: #ffe3bd; }
+.tg-row.dim { opacity: 0.22; }
+.tg-row.focused .tg-row-bg { fill: #eceaff; }
 
 /* ── 编辑器联动 / 搜索高亮 ──────────── */
 .CodeMirror { font-family: Consolas, Menlo, monospace; }
