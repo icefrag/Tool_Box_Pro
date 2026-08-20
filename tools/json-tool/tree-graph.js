@@ -171,7 +171,7 @@ export class TreeGraph {
     }));
     if (node.children && node.children.length > 0) {
       for (const child of node.children) {
-        const rowEl = this._rowCard(child, rows.get(child.id));
+        const rowEl = this._rowCard(child, rows.get(child.id), table);
         this.rowEls.set(child.id, rowEl);
         g.appendChild(rowEl);
       }
@@ -188,13 +188,14 @@ export class TreeGraph {
     return g;
   }
 
-  _rowCard(node, row) {
+  _rowCard(node, row, table) {
     const color = TYPE_COLORS[node.type] || '#333333';
     const expandable = node.children && node.children.length > 0;
     const isExpanded = expandable && !this.collapsed.has(node.id);
+    // 行在表格 <g> 内部，需将画布绝对坐标换算为表格相对坐标
     const g = svgEl('g', {
       class: 'tg-row',
-      transform: `translate(${row.x},${row.y})`,
+      transform: `translate(${row.x - table.x},${row.y - table.y})`,
       'data-path': node.id,
     });
     g.appendChild(svgEl('rect', { class: 'tg-row-bg', width: row.w, height: LAYOUT.ROW_H, rx: 4 }));
