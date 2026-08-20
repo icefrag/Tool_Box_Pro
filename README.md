@@ -142,6 +142,12 @@ await this.sendMessage('type', 'action', { data });
 
 ## 更新日志
 
+### v1.1.0
+- 新增 JSON 树图工具：全屏页面，CodeMirror 编辑器 + 横向 SVG 树图
+- 格式化 / 压缩 / 校验（错误行列号定位，可点击跳转）
+- 搜索 key 与值：树图与编辑器双侧高亮，Enter 循环跳转
+- 编辑器 ↔ 树图双向联动定位
+
 ### v1.0.0
 - 初始版本
 - Cookie 获取工具

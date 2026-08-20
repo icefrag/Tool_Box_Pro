@@ -10,7 +10,7 @@
 
 ## 📖 这是什么？
 
-ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采用模块化设计，持续添加实用开发工具。目前内置两个高频使用的开发工具：
+ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采用模块化设计，持续添加实用开发工具。目前内置三个高频使用的开发工具：
 
 ### ✨ 当前功能
 
@@ -26,6 +26,14 @@ ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采
 - 支持 ID 优先策略，生成更稳定的选择器
 - 鼠标悬停高亮预览，一键复制
 - 调试爬虫、自动化测试必备
+
+**3. JSON 树图工具 🌳（v1.1.0 新增）**
+- 全屏页面打开：左侧代码编辑器 + 右侧交互式树图
+- JSON 一键渲染为横向节点树图，缩放、拖拽、折叠自如
+- 格式化 / 压缩 / 校验，错误精确到行列号，点击跳转
+- 搜索 key 与值：树图与编辑器双侧高亮，Enter 循环跳转
+- 编辑器与树图双向联动，点哪里看哪里
+- 接口联调、复杂配置可视化必备
 
 ## 🎯 为什么你需要安装它？
 
@@ -51,6 +59,7 @@ ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采
 - 接口调试时快速获取认证 Cookie
 - 网页分析快速提取元素路径
 - 前端开发调试快速验证选择器
+- 接口联调时可视化查看大型 JSON 响应结构
 
 ## 🔒 权限说明
 
@@ -71,7 +80,7 @@ ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采
 
 ## 📖 What is this?
 
-ToolBox Pro is a Chrome extension toolkit designed specifically for web developers. It features a modular design and continuously adds practical development tools. Currently includes two frequently used tools:
+ToolBox Pro is a Chrome extension toolkit designed specifically for web developers. It features a modular design and continuously adds practical development tools. Currently includes three frequently used tools:
 
 ### ✨ Current Features
 
@@ -87,6 +96,14 @@ ToolBox Pro is a Chrome extension toolkit designed specifically for web develope
 - Supports ID-first strategy for more stable selectors
 - Hover highlighting preview, one-click copy
 - Essential for debugging crawlers and automated testing
+
+**3. JSON Tree Tool 🌳 (New in v1.1.0)**
+- Opens in a fullscreen page: code editor on the left, interactive tree graph on the right
+- Renders JSON as a horizontal node tree graph with zoom, pan and collapse
+- Format / minify / validate with precise line-column error jump
+- Search keys and values: dual highlighting on both tree and editor, Enter to cycle matches
+- Bidirectional sync between editor and tree graph
+- Essential for API debugging and visualizing complex configs
 
 ## 🎯 Why should you install it?
 
@@ -112,6 +129,7 @@ As a developer, do you often:
 - Quickly get authentication cookies for API debugging
 - Quickly extract element paths for web analysis
 - Quickly verify selectors for frontend development debugging
+- Visualize large JSON response structures during API integration
 
 ## 🔒 Permissions
 
