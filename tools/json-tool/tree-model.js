@@ -1,5 +1,5 @@
 // AST → 树节点模型（纯函数，无 DOM / chrome API 依赖）
-// TreeNode：{ id(path), label, type, valueText, childCount, children|null,
+// TreeNode：{ id(path), label, type, valueText, searchText, childCount, children|null,
 //             start, end, keyStart?, keyEnd?, parent }
 import { childPath, itemPath } from './json-parser.js';
 
@@ -16,6 +16,7 @@ function fromValueNode(astNode, label, path, keyRange, parent) {
     label,
     type: astNode.type,
     valueText: '',
+    searchText: '',
     childCount: 0,
     children: null,
     start: astNode.start,
@@ -34,6 +35,8 @@ function fromValueNode(astNode, label, path, keyRange, parent) {
     node.childCount = node.children.length;
   } else {
     node.valueText = summarize(astNode.value);
+    // searchText：未截断全文，供搜索匹配（valueText 仅用于显示，可能截断）
+    node.searchText = typeof astNode.value === 'string' ? JSON.stringify(astNode.value) : String(astNode.value);
   }
   return node;
 }

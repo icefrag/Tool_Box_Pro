@@ -29,6 +29,7 @@ class JsonTreeApp {
     this.tree = null; // 最近一次有效树
     this.matches = [];
     this.matchIndex = -1;
+    this.flashTimer = null;
 
     this.editor = new JsonEditor($('editor-pane'), {
       onChange: () => this.handleInput(),
@@ -64,21 +65,23 @@ class JsonTreeApp {
   bindToolbar() {
     $('btn-sample').addEventListener('click', () => {
       this.editor.setValue(SAMPLE_JSON);
-      this.handleInput();
     });
     $('btn-clear').addEventListener('click', () => {
       this.editor.setValue('');
-      this.handleInput();
     });
     $('btn-format').addEventListener('click', () => {
       if (!this.tree) return;
-      this.editor.format();
-      this.handleInput();
+      if (!this.editor.format()) {
+        this.flashStatus('当前内容不是有效 JSON，无法格式化', 'error');
+        return;
+      }
     });
     $('btn-minify').addEventListener('click', () => {
       if (!this.tree) return;
-      this.editor.minify();
-      this.handleInput();
+      if (!this.editor.minify()) {
+        this.flashStatus('当前内容不是有效 JSON，无法压缩', 'error');
+        return;
+      }
     });
     $('btn-copy').addEventListener('click', async () => {
       const ok = await this.editor.copy();
@@ -197,23 +200,25 @@ class JsonTreeApp {
   }
 
   flashStatus(text, cls) {
+    clearTimeout(this.flashTimer);
     const el = $('validation-status');
     const prevText = el.textContent;
     const prevCls = el.className;
     el.textContent = text;
     el.className = 'jt-status ' + cls;
-    setTimeout(() => {
+    this.flashTimer = setTimeout(() => {
       el.textContent = prevText;
       el.className = prevCls;
     }, 1200);
   }
 }
 
-// 单层子节点超过 50 时该层默认折叠
+// 自动折叠阈值：单层子节点超过该值时该层默认折叠
+const AUTO_COLLAPSE_THRESHOLD = 50;
 function computeDefaultCollapsed(root) {
   const collapsed = new Set();
   (function walk(node) {
-    if (node.children && node.children.length > 50) collapsed.add(node.id);
+    if (node.children && node.children.length > AUTO_COLLAPSE_THRESHOLD) collapsed.add(node.id);
     if (node.children) node.children.forEach(walk);
   })(root);
   return collapsed;

@@ -30,12 +30,23 @@ export class JsonEditor {
 
   setValue(text) { this.cm.setValue(text); }
 
+  // 内容非法时返回 false，不改动编辑器内容
   format() {
-    this.cm.setValue(JSON.stringify(JSON.parse(this.cm.getValue()), null, 2));
+    try {
+      this.cm.setValue(JSON.stringify(JSON.parse(this.cm.getValue()), null, 2));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   minify() {
-    this.cm.setValue(JSON.stringify(JSON.parse(this.cm.getValue())));
+    try {
+      this.cm.setValue(JSON.stringify(JSON.parse(this.cm.getValue())));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async copy() {

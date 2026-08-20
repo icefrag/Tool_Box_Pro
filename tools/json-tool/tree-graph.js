@@ -69,6 +69,7 @@ export class TreeGraph {
       this._applyTransform();
     });
     this.svg.addEventListener('pointerup', () => { dragging = false; });
+    this.svg.addEventListener('pointercancel', () => { dragging = false; });
   }
 
   _zoomAt(cx, cy, factor) {
