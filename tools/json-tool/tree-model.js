@@ -1,0 +1,68 @@
+// AST → 树节点模型（纯函数，无 DOM / chrome API 依赖）
+// TreeNode：{ id(path), label, type, valueText, childCount, children|null,
+//             start, end, keyStart?, keyEnd?, parent }
+import { childPath, itemPath } from './json-parser.js';
+
+const VALUE_TEXT_MAX = 30;
+
+function summarize(value) {
+  const text = typeof value === 'string' ? JSON.stringify(value) : String(value);
+  return text.length > VALUE_TEXT_MAX ? text.slice(0, VALUE_TEXT_MAX - 1) + '…' : text;
+}
+
+function fromValueNode(astNode, label, path, keyRange, parent) {
+  const node = {
+    id: path,
+    label,
+    type: astNode.type,
+    valueText: '',
+    childCount: 0,
+    children: null,
+    start: astNode.start,
+    end: astNode.end,
+    keyStart: keyRange ? keyRange.start : undefined,
+    keyEnd: keyRange ? keyRange.end : undefined,
+    parent,
+  };
+  if (astNode.type === 'object') {
+    node.children = astNode.properties.map((p) =>
+      fromValueNode(p.value, p.key, childPath(path, p.key), { start: p.keyStart, end: p.keyEnd }, node)
+    );
+    node.childCount = node.children.length;
+  } else if (astNode.type === 'array') {
+    node.children = astNode.items.map((item, i) => fromValueNode(item, `[${i}]`, itemPath(path, i), null, node));
+    node.childCount = node.children.length;
+  } else {
+    node.valueText = summarize(astNode.value);
+  }
+  return node;
+}
+
+export function buildTree(ast) {
+  return fromValueNode(ast, '$', '$', null, null);
+}
+
+// 返回最深包含 offset 的节点（值区间或 key 区间命中均可）
+export function findNodeAt(root, offset) {
+  const inValue = root.start <= offset && offset <= root.end;
+  const inKey = root.keyStart !== undefined && root.keyStart <= offset && offset <= root.keyEnd;
+  if (!inValue && !inKey) return null;
+  if (root.children) {
+    for (const child of root.children) {
+      const hit = findNodeAt(child, offset);
+      if (hit) return hit;
+    }
+  }
+  return root;
+}
+
+export function findNodeById(root, id) {
+  if (root.id === id) return root;
+  if (root.children) {
+    for (const child of root.children) {
+      const hit = findNodeById(child, id);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
