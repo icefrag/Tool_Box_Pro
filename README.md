@@ -22,6 +22,13 @@
   - 两者都复制
 - 生成唯一性路径，支持复杂多卡片布局
 
+### 3. JSON 树图工具 🌳
+- 全屏页面打开，左侧 CodeMirror 编辑器 + 右侧可交互树图
+- 格式化 / 压缩 / 校验（错误行列号定位，可点击跳转）
+- JSON 数据渲染为横向节点树图：缩放、拖拽、折叠/展开
+- 搜索 key 与值：树图与编辑器双侧高亮，Enter 循环跳转
+- 编辑器 ↔ 树图双向联动定位
+
 ## 安装
 
 1. 打开 Chrome 浏览器 → 扩展程序 (`chrome://extensions/`)
@@ -60,7 +67,8 @@ chrome-plugin/
 ├── tools/                        # 工具目录
 │   ├── base-tool.js              # 工具基类
 │   ├── cookie-tool/              # Cookie 工具
-│   └── xpath-helper/             # XPath 选择工具
+│   ├── xpath-helper/             # XPath 选择工具
+│   └── json-tool/                # JSON 树图工具（全屏页 + popup 启动器）
 ├── content/                      # 注入页面的脚本
 │   ├── content.js
 │   └── content.css

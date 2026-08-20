@@ -34,7 +34,9 @@ tools/json-tool/                 # 独立 ES6 模块入口，不依赖 popup
   ├── tree-model.js              # AST → 树节点模型，path ↔ 源码区间映射（纯函数）
   ├── tree-layout.js             # 横向整洁树布局算法（纯函数）
   ├── tree-graph.js              # SVG 渲染 + 缩放/拖拽 + 折叠 + 高亮
-  └── search.js                  # 搜索状态：匹配过滤、循环跳转
+  ├── search.js                  # 搜索状态：匹配过滤、循环跳转
+  ├── tool.js                    # JsonTool 启动器（popup 注册入口）
+  └── launcher.css               # popup 启动卡片样式
 
 lib/codemirror/                  # vendored 第三方库
   ├── codemirror.min.js          # 核心
@@ -118,7 +120,7 @@ lib/codemirror/                  # vendored 第三方库
 
 | 文件 | 变更 |
 |------|------|
-| `tools/json-tool/*` | 新增：全屏页全部 8 个文件 |
+| `tools/json-tool/*` | 新增：全屏页、启动器与测试（index/tool/main/editor/json-parser/tree-model/tree-layout/tree-graph/search/launcher.css + tests/） |
 | `lib/codemirror/*` | 新增：vendored CodeMirror 5（4 个文件） |
 | `utils/constants.js` | `TOOL_TYPES` 增加 `JSON_TREE: 'json-tree-tool'` |
 | `popup/popup.js` | import JsonTool 并在 `registerTools()` 注册 |

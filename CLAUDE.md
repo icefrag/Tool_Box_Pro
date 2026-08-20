@@ -57,9 +57,10 @@ chrome-plugin/
 │   │   ├── tool.html
 │   │   ├── tool.css
 │   │   └── tool.js
-│   └── xpath-helper/            # XPath 选择工具
+│   ├── xpath-helper/            # XPath 选择工具
 │       ├── tool.js
 │       └── tool.css
+│   └── json-tool/               # JSON 树图工具（全屏页 + popup 启动器）
 ├── content/
 │   ├── content.js               # XPath 选择逻辑（注入页面）
 │   └── content.css              # 高亮样式
@@ -78,6 +79,7 @@ chrome-plugin/
 |------|------|
 | **Cookie 获取** | 一键获取当前活动标签页的 Cookie 并自动复制到剪贴板，格式：`name1=value1; name2=value2` |
 | **XPath Helper** | 点击页面元素获取 XPath 和 CSS Selector，支持一键复制，鼠标悬停高亮 |
+| **JSON 树图工具** | 全屏页面：JSON 编辑器（格式化/压缩/校验）+ 横向树图可视化，搜索高亮与编辑器↔树图双向联动 |
 
 ## 开发命令
 
