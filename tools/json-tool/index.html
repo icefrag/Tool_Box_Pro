@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>JSON 树图工具 - ToolBox Pro</title>
+  <link rel="stylesheet" href="../../lib/codemirror/codemirror.css">
+  <link rel="stylesheet" href="tool.css">
+</head>
+<body>
+  <header class="jt-toolbar">
+    <span class="jt-brand">🌳 JSON 树图工具</span>
+    <div class="jt-actions">
+      <button id="btn-sample" title="载入示例数据">示例</button>
+      <button id="btn-clear" title="清空编辑器">清空</button>
+      <button id="btn-format" title="2 空格缩进格式化">格式化</button>
+      <button id="btn-minify" title="压缩为一行">压缩</button>
+      <button id="btn-copy" title="复制全部内容">复制</button>
+    </div>
+    <div class="jt-search">
+      <input id="search-input" type="text" placeholder="搜索 key / 值，Enter 跳转">
+      <span id="search-count"></span>
+    </div>
+    <span id="validation-status" class="jt-status"></span>
+  </header>
+
+  <div class="jt-main">
+    <div id="editor-pane"></div>
+    <div id="graph-pane">
+      <svg id="graph-svg"></svg>
+      <div id="graph-empty" class="jt-empty hidden">输入 JSON 后此处显示树图</div>
+      <div class="jt-graph-controls">
+        <button id="zoom-in" title="放大">＋</button>
+        <button id="zoom-out" title="缩小">－</button>
+        <button id="zoom-fit" title="适应画布">⤢</button>
+        <button id="zoom-reset" title="重置视图">↺</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="error-bar" class="jt-error-bar hidden"></div>
+
+  <script src="../../lib/codemirror/codemirror.min.js"></script>
+  <script src="../../lib/codemirror/mode/javascript/javascript.min.js"></script>
+  <script src="../../lib/codemirror/addon/edit/matchbrackets.min.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
