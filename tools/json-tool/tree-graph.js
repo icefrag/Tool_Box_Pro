@@ -19,6 +19,23 @@ function svgEl(tag, attrs = {}) {
   return el;
 }
 
+// CJK / 全角字符（按 2 单位视觉宽度计）
+const WIDE_CHAR_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/;
+
+// 按视觉宽度截断：汉字/全角记 2 单位、其余 1 单位；内容可用满上限，放不下时以 … 附加结尾
+export function ellipsize(text, maxUnits) {
+  const t = String(text ?? '');
+  let units = 0;
+  let out = '';
+  for (const ch of t) {
+    const w = WIDE_CHAR_RE.test(ch) ? 2 : 1;
+    if (units + w > maxUnits) return out + '…';
+    units += w;
+    out += ch;
+  }
+  return t;
+}
+
 export class TreeGraph {
   constructor(svg) {
     this.svg = svg;
@@ -301,8 +318,15 @@ export class TreeGraph {
     });
     g.appendChild(svgEl('rect', { class: 'tg-row-bg', width: row.w, height: LAYOUT.ROW_H, rx: 4 }));
 
+    // 悬停显示完整内容（值列显示时被截断，title 里给全文）
+    const title = svgEl('title');
+    title.textContent = node.children
+      ? `${node.label}: ${node.type === 'object' ? `{${node.childCount}}` : `[${node.childCount}]`}`
+      : `${node.label}: ${node.searchText ?? node.valueText}`;
+    g.appendChild(title);
+
     const key = svgEl('text', { class: 'tg-key', x: 4, y: LAYOUT.ROW_H / 2 + 4 });
-    key.textContent = node.label.length > 16 ? node.label.slice(0, 15) + '…' : node.label;
+    key.textContent = ellipsize(node.label, 16);
     g.appendChild(key);
 
     if (node.children) {
@@ -351,7 +375,7 @@ export class TreeGraph {
         y: LAYOUT.ROW_H / 2 + 4,
         'text-anchor': 'end',
       });
-      val.textContent = node.valueText;
+      val.textContent = ellipsize(node.valueText, 22);
       g.appendChild(val);
     }
 
