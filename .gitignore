@@ -1,1 +1,5 @@
 .worktrees/
+
+# 本地临时文件（浏览器联调服务器、商店发布包）
+.dev-server.mjs
+*.zip
