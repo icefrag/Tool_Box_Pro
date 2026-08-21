@@ -1,6 +1,8 @@
 // AST → 树节点模型（纯函数，无 DOM / chrome API 依赖）
 // TreeNode：{ id(path), label, type, valueText, searchText, childCount, children|null,
-//             start, end, keyStart?, keyEnd?, parent }
+//             transparent?, start, end, keyStart?, keyEnd?, parent }
+// transparent：仅数组可能为 true——元素全部为非空复合节点时，渲染层跳过数组中转表格，
+//              元素表格直接挂到数组行（标量/混合/空元素数组与根数组不透明）
 import { childPath, itemPath } from './json-parser.js';
 
 const VALUE_TEXT_MAX = 30;
@@ -33,6 +35,8 @@ function fromValueNode(astNode, label, path, keyRange, parent) {
   } else if (astNode.type === 'array') {
     node.children = astNode.items.map((item, i) => fromValueNode(item, `[${i}]`, itemPath(path, i), null, node));
     node.childCount = node.children.length;
+    node.transparent = node.children.length > 0
+      && node.children.every((c) => c.children !== null && c.children.length > 0);
   } else {
     node.valueText = summarize(astNode.value);
     // searchText：未截断全文，供搜索匹配（valueText 仅用于显示，可能截断）

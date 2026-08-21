@@ -31,10 +31,11 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
     preview: { color: '#4f46e5', time: '2026-04-13T10:00:00Z', unicode: '你好' },
   });
   const { rows, tables } = layoutTree(T(json));
-  // 根表格 + 4 个直接复合子 + table_with_header 的 2 个对象
-  assert.equal(tables.size, 7);
+  // 根表格 + object + 标量数组 twh + preview + table_with_header 的 2 个对象（对象数组透明，无中转表格）
+  assert.equal(tables.size, 6);
   assert.ok(tables.has('$'));
   assert.ok(tables.has('$.object'));
+  assert.ok(!tables.has('$.table_with_header'));
   assert.ok(tables.has('$.table_with_header[0]'));
   assert.ok(tables.has('$.preview'));
   // 根表格的 4 行都在，标量行（int 等）在 $.object 的子表格里
@@ -68,10 +69,57 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
   assert.deepEqual(edges, []);
 }
 
-// edges：每个非根表格一条连线（回归：行与子表格同 path，不可用节点引用判异）
+// edges：每个非根表格一条「行 → 表格」连线（回归：行与子表格同 path，不可用节点引用判异）
 {
   const { edges } = layoutTree(T('{"a": {"x": 1}, "b": 2}'));
-  assert.deepEqual(edges, ['$.a']);
+  assert.deepEqual(edges, [{ from: '$.a', to: '$.a' }]);
+}
+
+// 透明数组：对象数组不建中转表格，元素表格直连数组行
+{
+  const { rows, tables, edges } = layoutTree(T('{"recordScoreR": [{"a": 1}, {"b": 2}]}'));
+  assert.ok(!tables.has('$.recordScoreR'));
+  assert.ok(tables.has('$.recordScoreR[0]'));
+  assert.ok(tables.has('$.recordScoreR[1]'));
+  assert.ok(rows.has('$.recordScoreR'));
+  assert.deepEqual(edges, [
+    { from: '$.recordScoreR', to: '$.recordScoreR[0]' },
+    { from: '$.recordScoreR', to: '$.recordScoreR[1]' },
+  ]);
+}
+
+// 透明数组折叠：无子表格无连线
+{
+  const { tables, edges } = layoutTree(T('{"recordScoreR": [{"a": 1}]}'), new Set(['$.recordScoreR']));
+  assert.ok(!tables.has('$.recordScoreR'));
+  assert.ok(!tables.has('$.recordScoreR[0]'));
+  assert.deepEqual(edges, []);
+}
+
+// 标量数组保留表格（无表头表格）
+{
+  const { tables, edges } = layoutTree(T('{"tags": ["a", "b"]}'));
+  assert.ok(tables.has('$.tags'));
+  assert.deepEqual(edges, [{ from: '$.tags', to: '$.tags' }]);
+}
+
+// 空对象元素数组 / 根数组不透明
+{
+  const { tables } = layoutTree(T('{"l": [{}, {}]}'));
+  assert.ok(tables.has('$.l'));
+  const rootArr = layoutTree(T('[{"a": 1}]'));
+  assert.ok(rootArr.tables.has('$'));
+  assert.ok(rootArr.tables.has('$[0]'));
+  assert.deepEqual(rootArr.edges, [{ from: '$[0]', to: '$[0]' }]);
+}
+
+// 嵌套透明：数组套数组套对象，最内层表格直连最外层数组行
+{
+  const { tables, edges } = layoutTree(T('{"groups": [[{"a": 1}]]}'));
+  assert.ok(!tables.has('$.groups'));
+  assert.ok(!tables.has('$.groups[0]'));
+  assert.ok(tables.has('$.groups[0][0]'));
+  assert.deepEqual(edges, [{ from: '$.groups', to: '$.groups[0][0]' }]);
 }
 
 // 紧凑表格：高度只由自身行数决定，不被展开的子表格撑大（用户反馈核心）

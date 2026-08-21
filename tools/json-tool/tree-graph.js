@@ -129,9 +129,9 @@ export class TreeGraph {
         'stroke-width': 1 / s,
       }));
     }
-    for (const path of edges) {
-      const row = this._layout.rows.get(path);
-      const table = tables.get(path);
+    for (const { from, to } of edges) {
+      const row = this._layout.rows.get(from);
+      const table = tables.get(to);
       this._mmContent.appendChild(svgEl('path', {
         class: 'tg-edge',
         stroke: '#c5cbe0',
@@ -247,8 +247,8 @@ export class TreeGraph {
     const { rows, tables, edges } = this._layout;
 
     // 连线：每个非根表格对应一条「行右缘 → 子表格左缘」的连线
-    for (const path of edges) {
-      this.edgesLayer.appendChild(this._edgePath(rows.get(path), tables.get(path)));
+    for (const { from, to } of edges) {
+      this.edgesLayer.appendChild(this._edgePath(rows.get(from), tables.get(to)));
     }
     // 表格与行
     for (const table of tables.values()) {

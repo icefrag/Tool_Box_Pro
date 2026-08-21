@@ -51,3 +51,13 @@ assert.equal(tree.children[0].valueText, '1');
   assert.equal(n.parent.parent.parent.parent, null);
   assert.equal(findNodeById(tree, '$.not-exist'), null);
 }
+
+// transparent：元素全为非空复合节点的数组才透明
+{
+  const t = buildTree(parseJson('{"objs":[{"a":1},{"b":2}],"tags":["x"],"mix":[{"a":1},"s"],"empties":[{},{}]}').ast);
+  assert.equal(t.children[0].transparent, true);   // objs：对象数组
+  assert.equal(t.children[1].transparent, false);  // tags：标量数组
+  assert.equal(t.children[2].transparent, false);  // mix：混合
+  assert.equal(t.children[3].transparent, false);  // empties：空对象元素
+  assert.equal(t.transparent, undefined);          // 对象不透明
+}
