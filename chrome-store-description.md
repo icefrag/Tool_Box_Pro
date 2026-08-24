@@ -27,7 +27,7 @@ ToolBox Pro 是一个专为网页开发者设计的 Chrome 扩展工具箱，采
 - 鼠标悬停高亮预览，一键复制
 - 调试爬虫、自动化测试必备
 
-**3. JSON 树图工具 🌳（v1.1.0 新增）**
+**3. JSON 树图工具 🌳（v1.1.0 引入，v1.2.0 全面升级为表格布局）**
 - 全屏页面打开：左侧代码编辑器 + 右侧交互式树图
 - JSON 一键渲染为横向节点树图，缩放、拖拽、折叠自如
 - 格式化 / 压缩 / 校验，错误精确到行列号，点击跳转
@@ -97,7 +97,7 @@ ToolBox Pro is a Chrome extension toolkit designed specifically for web develope
 - Hover highlighting preview, one-click copy
 - Essential for debugging crawlers and automated testing
 
-**3. JSON Tree Tool 🌳 (New in v1.1.0)**
+**3. JSON Tree Tool 🌳 (Introduced in v1.1.0, redesigned as table layout in v1.2.0)**
 - Opens in a fullscreen page: code editor on the left, interactive tree graph on the right
 - Renders JSON as a horizontal node tree graph with zoom, pan and collapse
 - Format / minify / validate with precise line-column error jump
