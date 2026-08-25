@@ -37,6 +37,20 @@
   text-overflow: ellipsis;
 }
 
+.media-open-tab-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.media-open-tab-btn:hover {
+  background: #f3f4f6;
+}
+
 .media-refresh-btn {
   border: 1px solid #d1d5db;
   background: #fff;
@@ -175,6 +189,11 @@
 .media-status.err {
   color: #dc2626;
   word-break: break-all;
+}
+
+/* popup.css 只定义了 .view.hidden，这里补齐本工具作用域内的隐藏类 */
+.media-tool .hidden {
+  display: none;
 }
 
 .media-empty {

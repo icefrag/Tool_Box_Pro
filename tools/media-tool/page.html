@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>媒体嗅探 - ToolBox Pro</title>
+  <link rel="stylesheet" href="tool.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .media-page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    .media-page h1 {
+      font-size: 18px;
+      margin: 0 0 16px;
+    }
+
+    .media-page .media-item {
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="media-page">
+    <h1>🎬 媒体嗅探</h1>
+    <div id="media-tool-root"></div>
+  </div>
+  <script type="module">
+    import { MediaTool } from './tool.js';
+
+    // 目标标签页：优先取 popup 传入的 ?tabId=，直接打开本页时猜最近活跃的非本页标签
+    let tabId = Number(new URLSearchParams(location.search).get('tabId'));
+    if (!tabId || Number.isNaN(tabId)) {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      const self = await chrome.tabs.getCurrent();
+      tabId = tab && tab.id !== self?.id ? tab.id : null;
+    }
+
+    const tool = new MediaTool({ tabId, standalone: true });
+    document.getElementById('media-tool-root').appendChild(tool.element);
+    await tool.initialize();
+    window.addEventListener('beforeunload', () => tool.destroy());
+  </script>
+</body>
+</html>

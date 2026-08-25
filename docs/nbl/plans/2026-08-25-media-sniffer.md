@@ -1616,6 +1616,13 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **工具栏改为**：`[嗅探开关] [提示] [↻ 刷新] [清空]`；新增 `getStatus` / `setEnabled` 消息；停止嗅探时清掉所有 tab 的 badge
 - MV3 约束：webRequest 监听保持顶层同步注册，事件处理入口按 enabled 标志短路
 
+## v1.3 修订（用户反馈：保存框抢焦点导致 popup 被关闭）
+
+- **新增独立标签页模式** `tools/media-tool/page.html`（经 `?tabId=` 绑定目标标签页）：popup 工具栏新增「↗」按钮打开。系统保存框弹出时标签页不会被关闭，可作为常驻下载管理面板
+- MediaTool 构造函数支持 `{ tabId, standalone }` 参数；独立页直开时回退猜测最近活跃的非本页标签
+- **修复**：`.media-empty` 依赖的 `hidden` 类在 popup.css 中无对应规则（仅 `.view.hidden`），tool.css 补 `.media-tool .hidden`
+- 说明：保存框由浏览器「下载前询问每个文件的保存位置」设置触发（扩展的 saveAs:false 无法覆盖），关闭该设置则直接落盘不弹框
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

@@ -11,12 +11,13 @@ const KIND_META = {
 };
 
 export class MediaTool extends BaseTool {
-  constructor() {
+  constructor({ tabId = null, standalone = false } = {}) {
     super('Media Sniffer', TOOL_TYPES.MEDIA_SNIFFER);
     this.name = '媒体嗅探';
     this.description = '嗅探并下载当前页面加载的视频/音频';
     this.icon = '🎬';
-    this.tabId = null;
+    this.tabId = tabId;
+    this.standalone = standalone;
     this.records = [];
     this.progress = new Map();
     this.storageListener = (changes, area) => this.onStorageChange(changes, area);
@@ -27,6 +28,7 @@ export class MediaTool extends BaseTool {
       <div class="media-toolbar">
         <button class="media-toggle-btn">▶ 开始嗅探</button>
         <span class="media-hint">开启后播放页面视频即可捕获</span>
+        <button class="media-open-tab-btn" title="在独立标签页打开">↗</button>
         <button class="media-refresh-btn" title="刷新列表">↻ 刷新</button>
         <button class="media-clear-btn">清空</button>
       </div>
@@ -36,14 +38,20 @@ export class MediaTool extends BaseTool {
     this.listEl = this.element.querySelector('.media-list');
     this.emptyEl = this.element.querySelector('.media-empty');
     this.element.querySelector('.media-toggle-btn').addEventListener('click', () => this.toggleSniffing());
+    this.element.querySelector('.media-open-tab-btn').addEventListener('click', () => this.openInTab());
     this.element.querySelector('.media-refresh-btn').addEventListener('click', () => this.refresh());
     this.element.querySelector('.media-clear-btn').addEventListener('click', () => this.clear());
+    if (this.standalone) {
+      this.element.querySelector('.media-open-tab-btn').classList.add('hidden');
+    }
   }
 
   async initialize() {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || tab.id == null) return;
-    this.tabId = tab.id;
+    if (this.tabId == null) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || tab.id == null) return;
+      this.tabId = tab.id;
+    }
     const status = await ToolMessenger.sendMessage('media-sniffer', 'getStatus', { tabId: this.tabId });
     this.sniffingEnabled = !!(status && status.enabled);
     this.updateToggleUi();
@@ -51,6 +59,14 @@ export class MediaTool extends BaseTool {
     // 轮询兜底：即使 storage 事件丢失，进度也能刷新
     this.pollTimer = setInterval(() => this.refresh(), 1000);
     await this.refresh();
+  }
+
+  // 在独立标签页打开（popup 会被系统保存框抢焦点关闭，标签页不会）
+  async openInTab() {
+    if (this.tabId == null) return;
+    const url = `${chrome.runtime.getURL('tools/media-tool/page.html')}?tabId=${this.tabId}`;
+    await chrome.tabs.create({ url });
+    window.close(); // popup 场景：打开页面后关闭弹窗
   }
 
   async toggleSniffing() {
