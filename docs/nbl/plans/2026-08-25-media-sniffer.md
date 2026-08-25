@@ -1628,6 +1628,11 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **独立标签页改为全局聚合视图**：展示所有标签页嗅探到的媒体（嗅探开关本就是全局的），每条标注来源域名（取记录的 documentUrl，回退媒体 URL）；下载/取消按各条目自己的 tabId 定位；「清空」新增 `clearAll` 动作清全部标签页
 - popup 保持「只看当前页」的轻量定位；独立页不再需要 `?tabId=` 参数
 
+## v1.5 修订（用户反馈：为何不直接弹出独立页）
+
+- **工具卡片点击直接打开独立标签页**：popup 详情视图被全局聚合页完全覆盖、只剩跳板成本，取消该中间步骤。popup.js 的 `openTool` 增加通用 `openExternal()` 钩子（工具声明即外部打开，不对具体工具特判）
+- 修复：page.html 内联 module 脚本违反扩展 CSP（`script-src 'self'` 禁内联），外置为 page.js；移除 openInTab 遗留的 tabId 空值守卫与 ↗ 按钮（含孤儿 CSS）
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

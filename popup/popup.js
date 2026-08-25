@@ -111,6 +111,12 @@ class ToolManager {
       return;
     }
 
+    // 工具可声明「外部打开」（如媒体嗅探在独立标签页打开），不进入 popup 详情视图
+    if (typeof tool.openExternal === 'function') {
+      await tool.openExternal();
+      return;
+    }
+
     try {
       // 初始化工具
       await tool.initialize();

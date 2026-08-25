@@ -28,7 +28,6 @@ export class MediaTool extends BaseTool {
       <div class="media-toolbar">
         <button class="media-toggle-btn">▶ 开始嗅探</button>
         <span class="media-hint">开启后播放页面视频即可捕获</span>
-        <button class="media-open-tab-btn" title="在独立标签页打开">↗</button>
         <button class="media-refresh-btn" title="刷新列表">↻ 刷新</button>
         <button class="media-clear-btn">清空</button>
       </div>
@@ -38,16 +37,11 @@ export class MediaTool extends BaseTool {
     this.listEl = this.element.querySelector('.media-list');
     this.emptyEl = this.element.querySelector('.media-empty');
     if (this.standalone) {
-      this.element.querySelector('.media-open-tab-btn').classList.add('hidden');
       this.emptyEl.textContent = '开启嗅探后，任意标签页播放的媒体都会出现在这里';
     }
     this.element.querySelector('.media-toggle-btn').addEventListener('click', () => this.toggleSniffing());
-    this.element.querySelector('.media-open-tab-btn').addEventListener('click', () => this.openInTab());
     this.element.querySelector('.media-refresh-btn').addEventListener('click', () => this.refresh());
     this.element.querySelector('.media-clear-btn').addEventListener('click', () => this.clear());
-    if (this.standalone) {
-      this.element.querySelector('.media-open-tab-btn').classList.add('hidden');
-    }
   }
 
   async initialize() {
@@ -65,11 +59,11 @@ export class MediaTool extends BaseTool {
     await this.refresh();
   }
 
-  // 在独立标签页打开（popup 会被系统保存框抢焦点关闭，标签页不会）
-  async openInTab() {
+  // popup 工具卡片点击：直接在独立标签页打开（不进入 popup 详情视图）
+  async openExternal() {
     try {
       await chrome.tabs.create({ url: chrome.runtime.getURL('tools/media-tool/page.html') });
-      window.close(); // popup 场景：打开页面后关闭弹窗
+      window.close();
     } catch (e) {
       console.error('[MediaTool] 打开独立页失败:', e);
     }
