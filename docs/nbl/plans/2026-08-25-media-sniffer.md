@@ -1608,6 +1608,7 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **进度展示增强**：直链显示「百分比 · 已收/总字节」，HLS 显示「分片数 · 百分比」；总大小未知时进度条用流动动画 + 字节计数
 - **popup 增加 1s 轮询兜底**：storage 事件丢失时进度仍可刷新
 - **条目去重改为资源键（origin+pathname）**：同一文件重新签名（query 变化）不再产生重复条目；仍重名的条目展示层加序号后缀 `(2)`、`(3)`
+- **DNR modifyHeaders schema 修正**：`setRequestHeaders` 为错误写法，正确为 `requestHeaders: [{ header, operation: 'set', value }]`；该错误导致点击下载即在设置防盗链规则时抛异常、任务直接失败
 
 ---
 

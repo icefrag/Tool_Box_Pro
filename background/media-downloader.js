@@ -125,7 +125,9 @@ export class MediaDownloader {
         condition: { requestDomains: [host], resourceTypes: ['xmlhttprequest', 'media', 'other'] },
         action: {
           type: 'modifyHeaders',
-          setRequestHeaders: [{ header: 'referer', value: referer }],
+          requestHeaders: [
+            { header: 'referer', operation: 'set', value: referer },
+          ],
         },
       }],
     });
