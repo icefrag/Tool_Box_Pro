@@ -2,12 +2,16 @@
   "manifest_version": 3,
   "name": "ToolBox Pro",
   "version": "1.2.0",
-  "description": "轻量实用的Chrome开发者工具集：Cookie获取、XPath选择器、JSON树图可视化",
+  "description": "轻量实用的Chrome工具集：Cookie获取、XPath选择器、JSON树图可视化、媒体嗅探下载",
   "permissions": [
     "activeTab",
     "cookies",
     "storage",
-    "scripting"
+    "scripting",
+    "webRequest",
+    "downloads",
+    "declarativeNetRequest",
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>",
