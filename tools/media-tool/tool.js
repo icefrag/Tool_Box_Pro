@@ -67,9 +67,12 @@ export class MediaTool extends BaseTool {
 
   // 在独立标签页打开（popup 会被系统保存框抢焦点关闭，标签页不会）
   async openInTab() {
-    if (this.tabId == null) return;
-    await chrome.tabs.create({ url: chrome.runtime.getURL('tools/media-tool/page.html') });
-    window.close(); // popup 场景：打开页面后关闭弹窗
+    try {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('tools/media-tool/page.html') });
+      window.close(); // popup 场景：打开页面后关闭弹窗
+    } catch (e) {
+      console.error('[MediaTool] 打开独立页失败:', e);
+    }
   }
 
   async toggleSniffing() {

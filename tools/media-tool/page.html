@@ -33,14 +33,6 @@
     <h1>🎬 媒体嗅探</h1>
     <div id="media-tool-root"></div>
   </div>
-  <script type="module">
-    import { MediaTool } from './tool.js';
-
-    // 聚合视图：展示所有标签页嗅探到的媒体，无需绑定具体标签页
-    const tool = new MediaTool({ standalone: true });
-    document.getElementById('media-tool-root').appendChild(tool.element);
-    await tool.initialize();
-    window.addEventListener('beforeunload', () => tool.destroy());
-  </script>
+  <script type="module" src="page.js"></script>
 </body>
 </html>
