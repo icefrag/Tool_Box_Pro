@@ -3,6 +3,7 @@ import { TOOL_TYPES, UI_EVENTS } from '../utils/constants.js';
 import { CookieTool } from '../tools/cookie-tool/tool.js';
 import { XpathTool } from '../tools/xpath-helper/tool.js';
 import { JsonTool } from '../tools/json-tool/tool.js';
+import { MediaTool } from '../tools/media-tool/tool.js';
 
 class ToolManager {
   constructor() {
@@ -23,6 +24,7 @@ class ToolManager {
     this.registerTool(new CookieTool());
     this.registerTool(new XpathTool());
     this.registerTool(new JsonTool());
+    this.registerTool(new MediaTool());
     // 未来工具在这里注册：
     // this.registerTool(new FutureTool());
   }

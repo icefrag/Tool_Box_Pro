@@ -1,0 +1,135 @@
+/* 媒体嗅探工具样式 */
+.media-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.media-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.media-hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.media-clear-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.media-clear-btn:hover {
+  background: #f3f4f6;
+}
+
+.media-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.media-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-filename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.media-dl-btn {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.media-dl-btn:hover {
+  background: #1d4ed8;
+}
+
+.media-item-sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.media-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.media-progress-bar {
+  height: 100%;
+  background: #2563eb;
+  transition: width 0.3s;
+}
+
+.media-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.media-progress-text {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.media-cancel-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.media-status {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.media-status.ok {
+  color: #16a34a;
+}
+
+.media-status.err {
+  color: #dc2626;
+  word-break: break-all;
+}
+
+.media-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+  padding: 20px 0;
+}
