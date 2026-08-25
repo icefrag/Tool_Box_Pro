@@ -1623,6 +1623,11 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **修复**：`.media-empty` 依赖的 `hidden` 类在 popup.css 中无对应规则（仅 `.view.hidden`），tool.css 补 `.media-tool .hidden`
 - 说明：保存框由浏览器「下载前询问每个文件的保存位置」设置触发（扩展的 saveAs:false 无法覆盖），关闭该设置则直接落盘不弹框
 
+## v1.4 修订（用户反馈：独立页的嗅探范围）
+
+- **独立标签页改为全局聚合视图**：展示所有标签页嗅探到的媒体（嗅探开关本就是全局的），每条标注来源域名（取记录的 documentUrl，回退媒体 URL）；下载/取消按各条目自己的 tabId 定位；「清空」新增 `clearAll` 动作清全部标签页
+- popup 保持「只看当前页」的轻量定位；独立页不再需要 `?tabId=` 参数
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

@@ -174,6 +174,16 @@ export class MediaSniffer {
     }
   }
 
+  // 清空所有标签页的媒体列表（独立页聚合视图的「清空」）
+  async clearAll() {
+    const all = await chrome.storage.session.get(null);
+    const keys = Object.keys(all).filter((k) => k.startsWith('media:'));
+    if (keys.length) {
+      await chrome.storage.session.remove(keys);
+    }
+    await this.clearAllBadges();
+  }
+
   async getRecord(tabId, id) {
     return (await this.read(tabId))[id] || null;
   }
@@ -192,6 +202,10 @@ export class MediaSniffer {
       }
       if (action === 'clear') {
         await this.clear(tabId);
+        return { cleared: true };
+      }
+      if (action === 'clearAll') {
+        await this.clearAll();
         return { cleared: true };
       }
       if (action === 'getRecord') {

@@ -37,6 +37,10 @@ export class MediaTool extends BaseTool {
     `;
     this.listEl = this.element.querySelector('.media-list');
     this.emptyEl = this.element.querySelector('.media-empty');
+    if (this.standalone) {
+      this.element.querySelector('.media-open-tab-btn').classList.add('hidden');
+      this.emptyEl.textContent = '开启嗅探后，任意标签页播放的媒体都会出现在这里';
+    }
     this.element.querySelector('.media-toggle-btn').addEventListener('click', () => this.toggleSniffing());
     this.element.querySelector('.media-open-tab-btn').addEventListener('click', () => this.openInTab());
     this.element.querySelector('.media-refresh-btn').addEventListener('click', () => this.refresh());
@@ -47,12 +51,12 @@ export class MediaTool extends BaseTool {
   }
 
   async initialize() {
-    if (this.tabId == null) {
+    if (this.tabId == null && !this.standalone) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab || tab.id == null) return;
       this.tabId = tab.id;
     }
-    const status = await ToolMessenger.sendMessage('media-sniffer', 'getStatus', { tabId: this.tabId });
+    const status = await ToolMessenger.sendMessage('media-sniffer', 'getStatus', {});
     this.sniffingEnabled = !!(status && status.enabled);
     this.updateToggleUi();
     chrome.storage.onChanged.addListener(this.storageListener);
@@ -64,8 +68,7 @@ export class MediaTool extends BaseTool {
   // 在独立标签页打开（popup 会被系统保存框抢焦点关闭，标签页不会）
   async openInTab() {
     if (this.tabId == null) return;
-    const url = `${chrome.runtime.getURL('tools/media-tool/page.html')}?tabId=${this.tabId}`;
-    await chrome.tabs.create({ url });
+    await chrome.tabs.create({ url: chrome.runtime.getURL('tools/media-tool/page.html') });
     window.close(); // popup 场景：打开页面后关闭弹窗
   }
 
@@ -90,19 +93,33 @@ export class MediaTool extends BaseTool {
   }
 
   onStorageChange(changes, area) {
-    if (area !== 'session' || this.tabId == null) return;
-    const touched = Object.keys(changes).some(
-      (k) => k === `media:${this.tabId}` || k.startsWith('download:')
+    if (area !== 'session') return;
+    const touched = Object.keys(changes).some((k) =>
+      k.startsWith('download:')
+      || (this.standalone ? k.startsWith('media:') : k === `media:${this.tabId}`)
     );
     if (touched) this.refresh();
   }
 
   async refresh() {
-    if (this.tabId == null) return;
-    const progressKeys = [...new Set(this.records.map((r) => `download:${r.id}`))];
-    const store = await chrome.storage.session.get([`media:${this.tabId}`, ...progressKeys]);
-    const records = store[`media:${this.tabId}`] || {};
-    this.records = Object.values(records).sort((a, b) => b.firstSeenAt - a.firstSeenAt);
+    const store = await chrome.storage.session.get(null);
+    if (this.standalone) {
+      // 全局聚合：所有标签页的媒体，按发现时间倒序
+      const all = [];
+      for (const [k, records] of Object.entries(store)) {
+        if (!k.startsWith('media:')) continue;
+        const tabId = Number(k.slice('media:'.length));
+        for (const r of Object.values(records)) {
+          r._tabId = tabId;
+          all.push(r);
+        }
+      }
+      this.records = all.sort((a, b) => b.firstSeenAt - a.firstSeenAt);
+    } else {
+      if (this.tabId == null) return;
+      const records = store[`media:${this.tabId}`] || {};
+      this.records = Object.values(records).sort((a, b) => b.firstSeenAt - a.firstSeenAt);
+    }
     // 重名条目加序号后缀（仅展示层，不改存储）
     const nameCount = new Map();
     for (const r of this.records) {
@@ -142,9 +159,12 @@ export class MediaTool extends BaseTool {
     const item = document.createElement('div');
     item.className = 'media-item';
 
+    // 独立页聚合视图：标注来源域名
+    const host = this.standalone ? sourceHost(r) : '';
+    const hostPrefix = host ? `${host} · ` : '';
     const sizeText = r.kind === 'hls'
-      ? (r.segmentCount ? `${meta.label} · ${r.segmentCount} 分片` : meta.label)
-      : `${meta.label}${r.contentLength ? ` · ${formatBytes(r.contentLength)}` : ''}`;
+      ? `${hostPrefix}${r.segmentCount ? `${meta.label} · ${r.segmentCount} 分片` : meta.label}`
+      : `${hostPrefix}${meta.label}${r.contentLength ? ` · ${formatBytes(r.contentLength)}` : ''}`;
 
     let statusHtml = '';
     const prog = this.progress.get(r.id);
@@ -193,15 +213,25 @@ export class MediaTool extends BaseTool {
   }
 
   async startDownload(id) {
-    await ToolMessenger.sendMessage('media-download', 'start', { tabId: this.tabId, id });
+    await ToolMessenger.sendMessage('media-download', 'start', { tabId: this.resolveTabId(id), id });
   }
 
   async cancelDownload(id) {
-    await ToolMessenger.sendMessage('media-download', 'cancel', { tabId: this.tabId, id });
+    await ToolMessenger.sendMessage('media-download', 'cancel', { tabId: this.resolveTabId(id), id });
+  }
+
+  // 聚合视图里每条记录归属各自标签页；popup 视图固定当前页
+  resolveTabId(id) {
+    const r = this.records.find((x) => x.id === id);
+    return (r && r._tabId) || this.tabId;
   }
 
   async clear() {
-    await ToolMessenger.sendMessage('media-sniffer', 'clear', { tabId: this.tabId });
+    if (this.standalone) {
+      await ToolMessenger.sendMessage('media-sniffer', 'clearAll', {});
+    } else {
+      await ToolMessenger.sendMessage('media-sniffer', 'clear', { tabId: this.tabId });
+    }
   }
 
   async execute() {
@@ -212,6 +242,15 @@ export class MediaTool extends BaseTool {
     if (this.pollTimer) clearInterval(this.pollTimer);
     chrome.storage.onChanged.removeListener(this.storageListener);
     this.log('媒体嗅探工具已销毁');
+  }
+}
+
+// 来源域名：优先记录的 documentUrl，回退媒体 URL 自身
+function sourceHost(r) {
+  try {
+    return new URL(r.documentUrl || r.url).hostname;
+  } catch {
+    return '';
   }
 }
 
