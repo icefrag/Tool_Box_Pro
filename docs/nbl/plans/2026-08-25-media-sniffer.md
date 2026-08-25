@@ -1644,6 +1644,22 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **组内条目按体积降序**：多清晰度 rendition（如 30232/100024）并存时，最大的（通常最高清）排最前；体积未知的条目（HLS）保持时间序
 - 说明：播放器加载多个清晰度/编码版本属自适应流正常行为，各自为独立可下载文件
 
+## v2：音视频无损合并（mp4box.js 方案）
+
+- **目标**：B站式「视频流 + 音频流」一键合并为单个双轨 mp4，无损不重编码（等价 `ffmpeg -c copy`）
+- **选型**：打包 mp4box.js 0.5.4（`lib/mp4box/mp4box.all.min.js`，约 160KB，BSD-3）；
+  弃选 ffmpeg.wasm（25MB+ 体积）与运行时远程加载（MV3 禁止远程代码）
+- **组件**：
+  - `tools/media-tool/lib/mp4-merge.js`：`mergeFmp4Tracks(MP4Box, videoBuffer, audioBuffer)`，依赖注入 MP4Box 保持纯函数；
+    demux 两条单轨 fMP4 到样本级 → `addTrack`（avcC/hvcC/av1C/esds 配置盒从源文件原样搬移）→ 双轨按 dts（归一化秒）交错 `addSample` → 全碎片化输出
+    （每样本一个 moof+mdat，播放器通用）
+  - offscreen：`<script>` 加载 mp4box；job `kind:'merge'` 拉取双流（合计字节进度）后合并
+  - SW：`startMerge` 动作，双流各自建 DNR 规则（rules 条目统一为 `ruleIds` 数组 + `merge` 标记），输出名 `{基础名}-merged.mp4`
+  - UI：视频流条目在同页存在音频流时显示「合并下载」按钮，自动配对体积最大的音频流；进度挂在视频流条目上
+- **测试**：`test-mp4-merge.js` 用真实 fMP4 夹具（Apple bipbop HEVC 示例流裁剪，`fixtures/build.mjs` 可重跑生成）
+  验证双轨结构、样本数无损；node 侧经 CJS 快照加载 UMD
+- **踩坑记录**：mp4box `addTrack` 的 `samplerate` 必须传原始值（写出时内部做 16.16 定点转换，调用方预移位会溢出为 0）
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

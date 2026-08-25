@@ -244,10 +244,13 @@ export class MediaTool extends BaseTool {
     }
 
     const showDownload = r.status !== 'done' && r.status !== 'running';
+    // 视频流 + 同页音频流 → 提供无损合并下载
+    const audioPair = showDownload && r.kind === 'video-stream' ? this.findAudioPair(r) : null;
     item.innerHTML = `
       <div class="media-item-head">
         <span class="media-kind-icon">${meta.icon}</span>
         <span class="media-filename" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+        ${audioPair ? `<button class="media-merge-btn" data-id="${r.id}">合并下载</button>` : ''}
         ${showDownload ? `<button class="media-dl-btn" data-id="${r.id}">下载</button>` : ''}
       </div>
       <div class="media-item-sub">${sizeText}</div>
@@ -255,11 +258,30 @@ export class MediaTool extends BaseTool {
 
     item.querySelector('.media-dl-btn')?.addEventListener('click', () => this.startDownload(r.id));
     item.querySelector('.media-cancel-btn')?.addEventListener('click', () => this.cancelDownload(r.id));
+    if (audioPair) {
+      item.querySelector('.media-merge-btn').addEventListener('click', () => this.startMerge(r.id, audioPair.id));
+    }
     return item;
+  }
+
+  // 同标签页内体积最大的音频流，作为合并对象
+  findAudioPair(r) {
+    const tabId = r._tabId != null ? r._tabId : this.tabId;
+    const candidates = this.records.filter((x) =>
+      x.kind === 'audio-stream' && (x._tabId != null ? x._tabId : this.tabId) === tabId);
+    return candidates.sort((a, b) => (b.contentLength || 0) - (a.contentLength || 0))[0] || null;
   }
 
   async startDownload(id) {
     await ToolMessenger.sendMessage('media-download', 'start', { tabId: this.resolveTabId(id), id });
+  }
+
+  async startMerge(videoId, audioId) {
+    await ToolMessenger.sendMessage('media-download', 'startMerge', {
+      tabId: this.resolveTabId(videoId),
+      videoId,
+      audioId,
+    });
   }
 
   async cancelDownload(id) {

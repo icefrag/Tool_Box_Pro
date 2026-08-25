@@ -11,9 +11,13 @@ export class MediaDownloader {
 
   registerHandlers(messageHandler) {
     messageHandler.register('media-download', async (request) => {
-      const { action, tabId, id } = request;
+      const { action, tabId, id, videoId, audioId } = request;
       if (action === 'start') {
         await this.start(tabId, id);
+        return { started: true };
+      }
+      if (action === 'startMerge') {
+        await this.startMerge(tabId, videoId, audioId);
         return { started: true };
       }
       if (action === 'cancel') {
@@ -22,6 +26,47 @@ export class MediaDownloader {
       }
       throw new Error(`未知的 media-download action: ${action}`);
     });
+  }
+
+  // 音视频双流无损合并下载（进度挂在视频流条目上）
+  async startMerge(tabId, videoId, audioId) {
+    const video = await this.sniffer.getRecord(tabId, videoId);
+    const audio = await this.sniffer.getRecord(tabId, audioId);
+    if (!video || !audio || video.status === 'running') return;
+
+    const total = (video.contentLength || 0) + (audio.contentLength || 0);
+    await this.markEntry(tabId, videoId, { status: 'running' });
+    await this.setProgress(videoId, { state: 'running', received: 0, total, error: null });
+
+    const ruleIds = [];
+    try {
+      for (const record of [video, audio]) {
+        const ruleId = await this.enableReferer(record);
+        if (ruleId !== null) ruleIds.push(ruleId);
+      }
+      this.rules.set(videoId, { ruleIds, tabId, merge: true });
+
+      await this.ensureOffscreen();
+      await this.notifyOffscreen({
+        target: 'offscreen',
+        command: 'download',
+        downloadId: videoId,
+        job: {
+          kind: 'merge',
+          video: { url: video.url, contentLength: video.contentLength },
+          audio: { url: audio.url, contentLength: audio.contentLength },
+          mimeType: 'video/mp4',
+        },
+      });
+      // 后续流程由 onOffscreenEvent 驱动
+    } catch (e) {
+      if (ruleIds.length) {
+        await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: ruleIds }).catch(() => {});
+      }
+      this.rules.delete(videoId);
+      await this.markEntry(tabId, videoId, { status: 'failed' });
+      await this.setProgress(videoId, { state: 'failed', error: e.message });
+    }
   }
 
   async start(tabId, id) {
@@ -34,7 +79,7 @@ export class MediaDownloader {
     let ruleId = null;
     try {
       ruleId = await this.enableReferer(record);
-      if (ruleId !== null) this.rules.set(id, { ruleId, tabId });
+      this.rules.set(id, { ruleIds: ruleId !== null ? [ruleId] : [], tabId, merge: false });
 
       await this.ensureOffscreen();
       await this.notifyOffscreen({
@@ -78,7 +123,7 @@ export class MediaDownloader {
     if (event === 'done') {
       try {
         const record = tabId != null ? await this.sniffer.getRecord(tabId, downloadId) : null;
-        const filename = record ? outputFilename(record, msg.isFmp4) : `media-${downloadId}.mp4`;
+        const filename = record ? outputFilename(record, msg.isFmp4, entry.merge) : `media-${downloadId}.mp4`;
         await this.triggerDownload(msg.blobUrl, filename);
         await this.notifyOffscreen({ target: 'offscreen', command: 'revoke', blobUrl: msg.blobUrl }).catch(() => {});
         if (tabId != null) await this.markEntry(tabId, downloadId, { status: 'done' });
@@ -102,8 +147,9 @@ export class MediaDownloader {
     const entry = this.rules.get(downloadId);
     if (!entry) return;
     this.rules.delete(downloadId);
-    if (entry.ruleId !== null) {
-      await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: [entry.ruleId] }).catch(() => {});
+    const ids = entry.ruleIds || [];
+    if (ids.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: ids }).catch(() => {});
     }
   }
 
@@ -195,8 +241,12 @@ function stableRuleId(str) {
   return (h % 1000000) + 1;
 }
 
-// HLS 输出名：基础名 + .ts / .mp4
-function outputFilename(record, isFmp4) {
+// 输出文件名：合并 → 基础名-merged.mp4；HLS → .ts/.mp4；其余原样
+function outputFilename(record, isFmp4, isMerge) {
+  if (isMerge) {
+    const base = record.filename.replace(/\.[a-z0-9]{2,5}$/i, '');
+    return `${base || 'video'}-merged.mp4`;
+  }
   if (record.kind !== 'hls') return record.filename;
   const base = record.filename.replace(/\.[a-z0-9]{2,5}$/i, '');
   return `${base || 'hls'}.${isFmp4 ? 'mp4' : 'ts'}`;

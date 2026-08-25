@@ -3,6 +3,7 @@
 import { parseM3u8, pickBestVariant } from '../tools/media-tool/lib/m3u8-parser.js';
 import { decryptAes128, ivFromMediaSequence, ivFromHexString } from '../tools/media-tool/lib/hls-decrypt.js';
 import { concatChunks, mergeFmp4Segments } from '../tools/media-tool/lib/stream-merger.js';
+import { mergeFmp4Tracks } from '../tools/media-tool/lib/mp4-merge.js';
 
 const CONCURRENCY = 6;
 
@@ -40,12 +41,22 @@ async function runDownload(downloadId, job) {
   try {
     let buffer;
     let isFmp4 = false;
-    if (job.kind === 'hls') {
+    let blob = null;
+    if (job.kind === 'merge') {
+      // 音视频双流拉取后无损合并为一个双轨 mp4
+      const total = (job.video.contentLength || 0) + (job.audio.contentLength || 0);
+      const vBuf = await fetchDirect(job.video.url, job.video.contentLength, controller.signal, (rec) => tick(rec, total));
+      const aBuf = await fetchDirect(job.audio.url, job.audio.contentLength, controller.signal, (rec) => tick(vBuf.length + rec, total));
+      const merged = await mergeFmp4Tracks(globalThis.MP4Box, vBuf, aBuf);
+      blob = new Blob([merged], { type: 'video/mp4' });
+    } else if (job.kind === 'hls') {
       ({ buffer, isFmp4 } = await fetchHls(job.url, controller.signal, tick));
     } else {
       buffer = await fetchDirect(job.url, job.contentLength, controller.signal, tick);
     }
-    const blob = new Blob([buffer], { type: job.mimeType || 'video/mp4' });
+    if (!blob) {
+      blob = new Blob([buffer], { type: job.mimeType || 'video/mp4' });
+    }
     report(downloadId, 'done', { blobUrl: URL.createObjectURL(blob), isFmp4 });
   } catch (e) {
     if (controller.signal.aborted) {

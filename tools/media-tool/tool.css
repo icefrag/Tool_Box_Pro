@@ -131,6 +131,21 @@
   font-size: 13px;
 }
 
+.media-merge-btn {
+  border: 1px solid #2563eb;
+  color: #2563eb;
+  background: #fff;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.media-merge-btn:hover {
+  background: #eff6ff;
+}
+
 .media-dl-btn {
   border: none;
   background: #2563eb;
