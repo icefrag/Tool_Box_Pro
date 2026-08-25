@@ -1602,6 +1602,13 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - 类型一致性：MediaRecord 字段（id/kind/url/documentUrl/contentType/contentLength/filename/firstSeenAt/status/segmentCount）在 Task 5 定义、Task 6/7 消费一致；消息类型 `media-sniffer` / `media-download`、offscreen 通道 `target:'offscreen'` 各处一致
 - 占位符扫描：无 TBD/TODO；所有代码步骤含完整代码
 
+## v1.1 修订（测试反馈）
+
+- **网络拉取从 SW 移入 offscreen 文档执行**：MV3 service worker 有 30s 空闲回收，B站等大文件下载中途 SW 被杀导致进度停滞且无报错。offscreen 常驻执行 fetch/HLS/AES/拼接，进度经 `target:'offscreen-event'` 消息回传 SW（同时保活 SW），SW 只做 DNR 防盗链、任务下发、`chrome.downloads` 落盘与状态维护
+- **进度展示增强**：直链显示「百分比 · 已收/总字节」，HLS 显示「分片数 · 百分比」；总大小未知时进度条用流动动画 + 字节计数
+- **popup 增加 1s 轮询兜底**：storage 事件丢失时进度仍可刷新
+- **条目去重改为资源键（origin+pathname）**：同一文件重新签名（query 变化）不再产生重复条目；仍重名的条目展示层加序号后缀 `(2)`、`(3)`
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

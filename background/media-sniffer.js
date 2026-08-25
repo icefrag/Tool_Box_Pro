@@ -6,6 +6,16 @@ const MIN_BYTES = 100 * 1024; // 小于 100KB 视为噪声
 const MAX_PER_TAB = 50;
 const storageKey = (tabId) => `media:${tabId}`;
 
+// 资源键：origin + pathname，忽略查询串签名（同一文件重新签名/换镜像时去重用）
+const resourceKey = (url) => {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return url;
+  }
+};
+
 export class MediaSniffer {
   constructor() {
     this.pending = new Map();   // requestId -> { url, tabId, documentUrl }
@@ -96,7 +106,7 @@ export class MediaSniffer {
     if (records[record.id]) {
       Object.assign(records[record.id], record);
     } else {
-      if (Object.values(records).some((r) => r.url === record.url)) return; // 同 URL 去重
+      if (Object.values(records).some((r) => resourceKey(r.url) === resourceKey(record.url))) return; // 同资源去重（忽略签名参数）
       records[record.id] = record;
       // 容量上限：挤出最旧的
       const all = Object.values(records).sort((a, b) => a.firstSeenAt - b.firstSeenAt);
