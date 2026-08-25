@@ -1,6 +1,7 @@
 // Service Worker - 处理后台任务和消息路由
 import { MessageHandler } from '../utils/messaging.js';
 import { MediaSniffer } from './media-sniffer.js';
+import { MediaDownloader } from './media-downloader.js';
 
 // 初始化消息处理器
 const messageHandler = new MessageHandler();
@@ -9,6 +10,10 @@ const messageHandler = new MessageHandler();
 const sniffer = new MediaSniffer();
 sniffer.start();
 sniffer.registerHandlers(messageHandler);
+
+// 媒体下载器
+const downloader = new MediaDownloader(sniffer);
+downloader.registerHandlers(messageHandler);
 
 // 监听来自content scripts和popup的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
