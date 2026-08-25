@@ -19,6 +19,11 @@ downloader.registerHandlers(messageHandler);
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // offscreen 专用通道：不进入 MessageHandler 路由
   if (request && request.target === 'offscreen') return false;
+  // offscreen 上报的进度/结果事件
+  if (request && request.target === 'offscreen-event') {
+    downloader.onOffscreenEvent(request).catch(console.error);
+    return false;
+  }
   messageHandler.handle(request, sender, sendResponse);
   return true; // 保持消息通道开启
 });

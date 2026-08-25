@@ -41,6 +41,8 @@ export class MediaTool extends BaseTool {
     if (!tab || tab.id == null) return;
     this.tabId = tab.id;
     chrome.storage.onChanged.addListener(this.storageListener);
+    // 轮询兜底：即使 storage 事件丢失，进度也能刷新
+    this.pollTimer = setInterval(() => this.refresh(), 1000);
     await this.refresh();
   }
 
@@ -58,6 +60,20 @@ export class MediaTool extends BaseTool {
     const store = await chrome.storage.session.get([`media:${this.tabId}`, ...progressKeys]);
     const records = store[`media:${this.tabId}`] || {};
     this.records = Object.values(records).sort((a, b) => b.firstSeenAt - a.firstSeenAt);
+    // 重名条目加序号后缀（仅展示层，不改存储）
+    const nameCount = new Map();
+    for (const r of this.records) {
+      const n = (nameCount.get(r.filename) || 0) + 1;
+      nameCount.set(r.filename, n);
+      if (n > 1) {
+        const dot = r.filename.lastIndexOf('.');
+        r.displayName = dot > 0
+          ? `${r.filename.slice(0, dot)}(${n})${r.filename.slice(dot)}`
+          : `${r.filename}(${n})`;
+      } else {
+        r.displayName = r.filename;
+      }
+    }
     this.progress.clear();
     for (const [k, v] of Object.entries(store)) {
       if (k.startsWith('download:')) this.progress.set(k.slice('download:'.length), v);
@@ -89,14 +105,25 @@ export class MediaTool extends BaseTool {
 
     let statusHtml = '';
     const prog = this.progress.get(r.id);
+    const name = r.displayName || r.filename;
     if (r.status === 'done') {
       statusHtml = '<span class="media-status ok">已下载</span>';
     } else if (prog && prog.state === 'running') {
-      const pct = prog.total ? Math.min(100, Math.round((prog.received / prog.total) * 100)) : 0;
+      let counter;
+      let pct = null;
+      if (prog.unit === 'segments') {
+        pct = prog.total ? Math.min(100, Math.round((prog.received / prog.total) * 100)) : null;
+        counter = `${prog.received}/${prog.total} 分片${pct !== null ? ` · ${pct}%` : ''}`;
+      } else {
+        pct = prog.total ? Math.min(100, Math.round((prog.received / prog.total) * 100)) : null;
+        counter = pct !== null
+          ? `${pct}% · ${formatBytes(prog.received || 0)} / ${formatBytes(prog.total)}`
+          : `已接收 ${formatBytes(prog.received || 0)}`;
+      }
       statusHtml = `
-        <div class="media-progress"><div class="media-progress-bar" style="width:${pct}%"></div></div>
+        <div class="media-progress${pct === null ? ' indeterminate' : ''}"><div class="media-progress-bar"${pct !== null ? ` style="width:${pct}%"` : ''}></div></div>
         <div class="media-progress-row">
-          <span class="media-progress-text">${pct}%</span>
+          <span class="media-progress-text">${counter}</span>
           <button class="media-cancel-btn" data-id="${r.id}">取消</button>
         </div>`;
     } else if (prog && prog.state === 'failed') {
@@ -111,7 +138,7 @@ export class MediaTool extends BaseTool {
     item.innerHTML = `
       <div class="media-item-head">
         <span class="media-kind-icon">${meta.icon}</span>
-        <span class="media-filename" title="${escapeHtml(r.filename)}">${escapeHtml(r.filename)}</span>
+        <span class="media-filename" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
         ${showDownload ? `<button class="media-dl-btn" data-id="${r.id}">下载</button>` : ''}
       </div>
       <div class="media-item-sub">${sizeText}</div>
@@ -139,6 +166,7 @@ export class MediaTool extends BaseTool {
   }
 
   async destroy() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
     chrome.storage.onChanged.removeListener(this.storageListener);
     this.log('媒体嗅探工具已销毁');
   }

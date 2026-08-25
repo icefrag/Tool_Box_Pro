@@ -93,6 +93,21 @@
   transition: width 0.3s;
 }
 
+/* 未知总大小时：流动动画表示进行中 */
+.media-progress.indeterminate {
+  position: relative;
+}
+
+.media-progress.indeterminate .media-progress-bar {
+  width: 30%;
+  animation: media-indeterminate 1.2s infinite linear;
+}
+
+@keyframes media-indeterminate {
+  0% { margin-left: -30%; }
+  100% { margin-left: 100%; }
+}
+
 .media-progress-row {
   display: flex;
   align-items: center;
