@@ -115,12 +115,20 @@ export class MediaSniffer {
   async write(tabId, records) {
     await chrome.storage.session.set({ [storageKey(tabId)]: records });
     const count = Object.keys(records).length;
-    await chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : '' });
+    try {
+      await chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : '' });
+    } catch {
+      // 标签页可能已关闭，badge 更新失败可忽略
+    }
   }
 
   async clear(tabId) {
     await chrome.storage.session.remove(storageKey(tabId));
-    await chrome.action.setBadgeText({ tabId, text: '' });
+    try {
+      await chrome.action.setBadgeText({ tabId, text: '' });
+    } catch {
+      // 标签页可能已关闭
+    }
   }
 
   async getRecord(tabId, id) {
