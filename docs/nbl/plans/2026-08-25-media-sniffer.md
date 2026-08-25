@@ -1610,6 +1610,12 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **条目去重改为资源键（origin+pathname）**：同一文件重新签名（query 变化）不再产生重复条目；仍重名的条目展示层加序号后缀 `(2)`、`(3)`
 - **DNR modifyHeaders schema 修正**：`setRequestHeaders` 为错误写法，正确为 `requestHeaders: [{ header, operation: 'set', value }]`；该错误导致点击下载即在设置防盗链规则时抛异常、任务直接失败
 
+## v1.2 修订（用户反馈：按需嗅探）
+
+- **嗅探默认关闭，改为手动开关**：新增 `media-sniffer:enabled` 会话级开关（storage.session，浏览器重启自动归零）。关闭时不记录任何请求、badge 熄灭；开启后持续捕获（含 popup 关闭期间，保证「先播视频再开工具」流程可用）
+- **工具栏改为**：`[嗅探开关] [提示] [↻ 刷新] [清空]`；新增 `getStatus` / `setEnabled` 消息；停止嗅探时清掉所有 tab 的 badge
+- MV3 约束：webRequest 监听保持顶层同步注册，事件处理入口按 enabled 标志短路
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

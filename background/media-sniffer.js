@@ -5,6 +5,7 @@ import { filenameFromUrl } from '../tools/media-tool/lib/filename.js';
 const MIN_BYTES = 100 * 1024; // 小于 100KB 视为噪声
 const MAX_PER_TAB = 50;
 const storageKey = (tabId) => `media:${tabId}`;
+const ENABLED_KEY = 'media-sniffer:enabled';
 
 // 资源键：origin + pathname，忽略查询串签名（同一文件重新签名/换镜像时去重用）
 const resourceKey = (url) => {
@@ -20,15 +21,46 @@ export class MediaSniffer {
   constructor() {
     this.pending = new Map();   // requestId -> { url, tabId, documentUrl }
     this.playlists = new Map(); // tabId -> Set<m3u8 url>，分片归并上下文（SW 重启失效，可接受）
+    this.enabled = false;       // 默认不嗅探，用户显式开启
   }
 
-  start() {
+  async start() {
+    // 事件监听必须同步注册（MV3 要求），开关状态异步恢复
     chrome.webRequest.onBeforeRequest.addListener((d) => this.onRequest(d), { urls: ['<all_urls>'] });
     chrome.webRequest.onHeadersReceived.addListener((d) => this.onHeaders(d), { urls: ['<all_urls>'] });
     chrome.tabs.onRemoved.addListener((tabId) => this.cleanup(tabId));
+    await this.loadState();
+  }
+
+  async loadState() {
+    const obj = await chrome.storage.session.get(ENABLED_KEY);
+    this.enabled = obj[ENABLED_KEY] === true;
+  }
+
+  async setEnabled(enabled) {
+    this.enabled = Boolean(enabled);
+    await chrome.storage.session.set({ [ENABLED_KEY]: this.enabled });
+    if (!this.enabled) await this.clearAllBadges();
+    return this.enabled;
+  }
+
+  async clearAllBadges() {
+    const all = await chrome.storage.session.get(null);
+    for (const k of Object.keys(all)) {
+      if (!k.startsWith('media:')) continue;
+      const tabId = Number(k.slice('media:'.length));
+      if (!Number.isNaN(tabId)) {
+        try {
+          await chrome.action.setBadgeText({ tabId, text: '' });
+        } catch {
+          // 标签页可能已关闭
+        }
+      }
+    }
   }
 
   onRequest(details) {
+    if (!this.enabled) return;
     if (details.tabId < 0) return;
     const url = details.url;
     if (url.startsWith('chrome-extension://') || url.startsWith('blob:') || url.startsWith('data:')) return;
@@ -42,6 +74,7 @@ export class MediaSniffer {
   }
 
   async onHeaders(details) {
+    if (!this.enabled) return;
     const info = this.pending.get(details.requestId);
     if (!info || details.tabId < 0 || details.tabId !== info.tabId) return;
     this.pending.delete(details.requestId);
@@ -163,6 +196,13 @@ export class MediaSniffer {
       }
       if (action === 'getRecord') {
         return this.getRecord(tabId, id);
+      }
+      if (action === 'setEnabled') {
+        const enabled = await this.setEnabled(request.enabled);
+        return { enabled };
+      }
+      if (action === 'getStatus') {
+        return { enabled: this.enabled };
       }
       throw new Error(`未知的 media-sniffer action: ${action}`);
     });

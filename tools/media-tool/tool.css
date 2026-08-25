@@ -8,13 +8,47 @@
 .media-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+}
+
+.media-toggle-btn {
+  border: 1px solid #2563eb;
+  color: #2563eb;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.media-toggle-btn.active {
+  background: #2563eb;
+  color: #fff;
 }
 
 .media-hint {
-  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
   color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-refresh-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.media-refresh-btn:hover {
+  background: #f3f4f6;
 }
 
 .media-clear-btn {
@@ -24,6 +58,7 @@
   padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .media-clear-btn:hover {

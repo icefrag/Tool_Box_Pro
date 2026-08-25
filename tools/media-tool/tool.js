@@ -25,7 +25,9 @@ export class MediaTool extends BaseTool {
     this.element.className = 'media-tool';
     this.element.innerHTML = `
       <div class="media-toolbar">
-        <span class="media-hint">页面播放视频后，这里会出现可下载的媒体</span>
+        <button class="media-toggle-btn">▶ 开始嗅探</button>
+        <span class="media-hint">开启后播放页面视频即可捕获</span>
+        <button class="media-refresh-btn" title="刷新列表">↻ 刷新</button>
         <button class="media-clear-btn">清空</button>
       </div>
       <div class="media-list"></div>
@@ -33,6 +35,8 @@ export class MediaTool extends BaseTool {
     `;
     this.listEl = this.element.querySelector('.media-list');
     this.emptyEl = this.element.querySelector('.media-empty');
+    this.element.querySelector('.media-toggle-btn').addEventListener('click', () => this.toggleSniffing());
+    this.element.querySelector('.media-refresh-btn').addEventListener('click', () => this.refresh());
     this.element.querySelector('.media-clear-btn').addEventListener('click', () => this.clear());
   }
 
@@ -40,10 +44,33 @@ export class MediaTool extends BaseTool {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || tab.id == null) return;
     this.tabId = tab.id;
+    const status = await ToolMessenger.sendMessage('media-sniffer', 'getStatus', { tabId: this.tabId });
+    this.sniffingEnabled = !!(status && status.enabled);
+    this.updateToggleUi();
     chrome.storage.onChanged.addListener(this.storageListener);
     // 轮询兜底：即使 storage 事件丢失，进度也能刷新
     this.pollTimer = setInterval(() => this.refresh(), 1000);
     await this.refresh();
+  }
+
+  async toggleSniffing() {
+    const next = !this.sniffingEnabled;
+    const status = await ToolMessenger.sendMessage('media-sniffer', 'setEnabled', { tabId: this.tabId, enabled: next });
+    this.sniffingEnabled = !!(status && status.enabled);
+    this.updateToggleUi();
+    await this.refresh();
+  }
+
+  updateToggleUi() {
+    const btn = this.element?.querySelector('.media-toggle-btn');
+    if (!btn) return;
+    if (this.sniffingEnabled) {
+      btn.textContent = '● 嗅探中';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '▶ 开始嗅探';
+      btn.classList.remove('active');
+    }
   }
 
   onStorageChange(changes, area) {
