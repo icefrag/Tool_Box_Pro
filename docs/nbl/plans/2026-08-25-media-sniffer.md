@@ -1633,6 +1633,11 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **工具卡片点击直接打开独立标签页**：popup 详情视图被全局聚合页完全覆盖、只剩跳板成本，取消该中间步骤。popup.js 的 `openTool` 增加通用 `openExternal()` 钩子（工具声明即外部打开，不对具体工具特判）
 - 修复：page.html 内联 module 脚本违反扩展 CSP（`script-src 'self'` 禁内联），外置为 page.js；移除 openInTab 遗留的 tabId 空值守卫与 ↗ 按钮（含孤儿 CSS）
 
+## v1.6 修订（用户反馈：按标签页分组展示）
+
+- **独立页列表按标签页分组**：组头显示标签页标题 + 条目数（`chrome.tabs.get` 读标题，`<all_urls>` host 权限已覆盖、无需新增权限）；已关闭标签页回退显示记录的来源域名；组间按组内最新发现时间倒序，组内按发现时间倒序
+- popup 视图维持扁平列表（只看当前页）
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）

@@ -135,17 +135,65 @@ export class MediaTool extends BaseTool {
     for (const [k, v] of Object.entries(store)) {
       if (k.startsWith('download:')) this.progress.set(k.slice('download:'.length), v);
     }
+    if (this.standalone) {
+      await this.buildGroups();
+    }
     this.render();
   }
 
+  // 独立页：按标签页分组（组标题取标签页标题，已关闭的回退来源域名）
+  async buildGroups() {
+    const groups = new Map(); // tabId -> records
+    for (const r of this.records) {
+      if (!groups.has(r._tabId)) groups.set(r._tabId, []);
+      groups.get(r._tabId).push(r);
+    }
+    const entries = [...groups.entries()].map(([tabId, list]) => ({
+      tabId,
+      records: list,
+      latest: Math.max(...list.map((r) => r.firstSeenAt)),
+    })).sort((a, b) => b.latest - a.latest);
+
+    this.groups = [];
+    for (const g of entries) {
+      let title = '';
+      try {
+        const tab = await chrome.tabs.get(g.tabId);
+        title = tab.title || '';
+      } catch {
+        // 标签页已关闭
+      }
+      if (!title) {
+        title = sourceHost(g.records[0]) || `标签页 #${g.tabId}`;
+      }
+      this.groups.push({ tabId: g.tabId, title, records: g.records });
+    }
+  }
+
   render() {
+    this.listEl.innerHTML = '';
     if (!this.records.length) {
-      this.listEl.innerHTML = '';
       this.emptyEl.classList.remove('hidden');
       return;
     }
     this.emptyEl.classList.add('hidden');
-    this.listEl.innerHTML = '';
+
+    // 独立页：按标签页分组展示
+    if (this.standalone && this.groups) {
+      for (const g of this.groups) {
+        const header = document.createElement('div');
+        header.className = 'media-group-header';
+        header.innerHTML = `
+          <span class="media-group-title" title="${escapeHtml(g.title)}">${escapeHtml(g.title)}</span>
+          <span class="media-group-count">${g.records.length}</span>`;
+        this.listEl.appendChild(header);
+        for (const r of g.records) {
+          this.listEl.appendChild(this.renderItem(r));
+        }
+      }
+      return;
+    }
+
     for (const r of this.records) {
       this.listEl.appendChild(this.renderItem(r));
     }

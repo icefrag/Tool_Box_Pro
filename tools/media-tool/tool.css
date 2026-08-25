@@ -65,10 +65,46 @@
   background: #f3f4f6;
 }
 
+/* 独立页分组头：标签页标题 */
+.media-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.media-group-header:first-child {
+  margin-top: 0;
+}
+
+.media-group-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.media-group-count {
+  font-size: 11px;
+  color: #6b7280;
+  background: #e5e7eb;
+  border-radius: 8px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
 .media-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.media-list .media-group-header {
+  margin-bottom: -2px;
 }
 
 .media-item {
