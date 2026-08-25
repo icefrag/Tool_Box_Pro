@@ -150,7 +150,8 @@ export class MediaTool extends BaseTool {
     }
     const entries = [...groups.entries()].map(([tabId, list]) => ({
       tabId,
-      records: list,
+      // 组内按体积降序：体积大的通常是更高清晰度的版本，方便挑选；体积未知（如 HLS）保持时间序
+      records: list.slice().sort((a, b) => (b.contentLength || 0) - (a.contentLength || 0)),
       latest: Math.max(...list.map((r) => r.firstSeenAt)),
     })).sort((a, b) => b.latest - a.latest);
 

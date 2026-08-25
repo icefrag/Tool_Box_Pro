@@ -7,11 +7,11 @@ const MAX_PER_TAB = 50;
 const storageKey = (tabId) => `media:${tabId}`;
 const ENABLED_KEY = 'media-sniffer:enabled';
 
-// 资源键：origin + pathname，忽略查询串签名（同一文件重新签名/换镜像时去重用）
+// 资源键：仅 pathname，忽略查询串签名与镜像域名差异
+// （B站等站点的文件路径本身唯一标识文件；同一文件重签名/换镜像不再重复入列）
 const resourceKey = (url) => {
   try {
-    const u = new URL(url);
-    return u.origin + u.pathname;
+    return new URL(url).pathname;
   } catch {
     return url;
   }
