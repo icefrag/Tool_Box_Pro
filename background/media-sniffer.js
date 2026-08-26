@@ -30,8 +30,18 @@ export class MediaSniffer {
     chrome.webRequest.onBeforeRequest.addListener((d) => this.onRequest(d), { urls: ['<all_urls>'] });
     // responseHeaders 必须显式声明 extraInfoSpec，否则 details.responseHeaders 恒为 undefined
     chrome.webRequest.onHeadersReceived.addListener((d) => this.onHeaders(d), { urls: ['<all_urls>'] }, ['responseHeaders']);
-    chrome.tabs.onRemoved.addListener((tabId) => this.cleanup(tabId));
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      this.cleanup(tabId);
+      this.syncEnabledToPages();
+    });
     await this.loadState();
+  }
+
+  // 独立页即开关：最后一个嗅探页面关闭后自动停止嗅探
+  async syncEnabledToPages() {
+    if (!this.enabled) return;
+    const pages = await chrome.tabs.query({ url: chrome.runtime.getURL('tools/media-tool/page.html') });
+    if (pages.length === 0) await this.setEnabled(false);
   }
 
   async loadState() {

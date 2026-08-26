@@ -52,6 +52,11 @@ export class MediaTool extends BaseTool {
     }
     const status = await ToolMessenger.sendMessage('media-sniffer', 'getStatus', {});
     this.sniffingEnabled = !!(status && status.enabled);
+    // 独立页即开关：打开页面自动开始嗅探（关闭最后一个页面时由后台自动停止）
+    if (this.standalone && !this.sniffingEnabled) {
+      const next = await ToolMessenger.sendMessage('media-sniffer', 'setEnabled', { enabled: true });
+      this.sniffingEnabled = !!(next && next.enabled);
+    }
     this.updateToggleUi();
     chrome.storage.onChanged.addListener(this.storageListener);
     // 轮询兜底：即使 storage 事件丢失，进度也能刷新
@@ -79,13 +84,16 @@ export class MediaTool extends BaseTool {
 
   updateToggleUi() {
     const btn = this.element?.querySelector('.media-toggle-btn');
+    const hint = this.element?.querySelector('.media-hint');
     if (!btn) return;
     if (this.sniffingEnabled) {
       btn.textContent = '● 嗅探中';
       btn.classList.add('active');
+      if (hint) hint.textContent = '已在播放的页面需刷新后才能捕获';
     } else {
       btn.textContent = '▶ 开始嗅探';
       btn.classList.remove('active');
+      if (hint) hint.textContent = '开启后播放页面视频即可捕获';
     }
   }
 

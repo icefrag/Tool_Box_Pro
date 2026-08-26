@@ -1668,6 +1668,15 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **修复**：注册监听时显式声明 `['responseHeaders']`
 - 诊断方法：SW 控制台读 `chrome.storage.session` 中 `media:*` 记录的 `contentType`/`contentLength` 字段
 
+## v2.2 修订（用户反馈：开关交互与已播放视频的捕获）
+
+- **「页面即开关」模型**：打开独立页自动开启嗅探；关闭最后一个独立页自动停止
+  （`tabs.onRemoved` → 查询剩余嗅探页数 → 归零则 setEnabled(false)）。页内手动开关保留；
+  开两个页关一个不受影响。依据：打开页面是「要使用」的最明确信号，与「未使用不嗅探」的初衷闭环
+- **已知限制明示**：webRequest 无历史回溯，开启嗅探前已加载的流无法捕获（刷新页面重新请求即可）；
+  嗅探中状态下提示文案改为「已在播放的页面需刷新后才能捕获」
+- 附加：popup 工具卡片新增 `checkAvailability` 可用性预检钩子（XPath 在浏览器内部页/扩展页置灰并提示）
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）
