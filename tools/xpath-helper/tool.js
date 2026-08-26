@@ -144,6 +144,16 @@ export class XpathTool extends BaseTool {
     });
   }
 
+  // popup 工具卡片可用性预检：浏览器内部页面无法注入内容脚本
+  checkAvailability(pageUrl) {
+    const url = pageUrl || '';
+    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')
+      || url.startsWith('edge://') || url.startsWith('about:')) {
+      return '当前页面不支持，请在普通网页中使用';
+    }
+    return null;
+  }
+
   async initialize() {
     // If element was destroyed (set to null), recreate it
     if (!this.element) {

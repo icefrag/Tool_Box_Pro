@@ -71,6 +71,23 @@ header p {
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
+/* 可用性预检不通过：置灰不可点 */
+.tool-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tool-card.disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tool-card .tool-unavailable {
+  color: #d97706;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
 .tool-card h3 {
   font-size: 16px;
   margin-bottom: 5px;

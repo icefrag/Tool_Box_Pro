@@ -16,7 +16,17 @@ class ToolManager {
   async initialize() {
     this.registerTools();
     this.setupEventListeners();
+    await this.detectActiveTab();
     this.renderToolList();
+  }
+
+  async detectActiveTab() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      this.activeTabUrl = (tab && tab.url) || '';
+    } catch {
+      this.activeTabUrl = '';
+    }
   }
 
   registerTools() {
@@ -52,13 +62,26 @@ class ToolManager {
   createToolCard(tool) {
     const card = document.createElement('div');
     card.className = 'tool-card';
+
+    // 工具可用性预检（如 XPath 需要可注入的普通网页），不可用则置灰提示
+    const unavailableReason = typeof tool.checkAvailability === 'function'
+      ? tool.checkAvailability(this.activeTabUrl)
+      : null;
+
     card.innerHTML = `
       <h3>
         <span class="tool-icon">${tool.icon}</span>
         ${tool.name}
       </h3>
       <p>${tool.description}</p>
+      ${unavailableReason ? `<p class="tool-unavailable">⚠️ ${unavailableReason}</p>` : ''}
     `;
+
+    if (unavailableReason) {
+      card.classList.add('disabled');
+      card.title = unavailableReason;
+      return card;
+    }
 
     card.addEventListener('click', async () => {
       this.openTool(tool.toolId);
