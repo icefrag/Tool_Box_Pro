@@ -7,11 +7,12 @@ const MAX_PER_TAB = 50;
 const storageKey = (tabId) => `media:${tabId}`;
 const ENABLED_KEY = 'media-sniffer:enabled';
 
-// 资源键：仅 pathname，忽略查询串签名与镜像域名差异
-// （B站等站点的文件路径本身唯一标识文件；同一文件重签名/换镜像不再重复入列）
+// 资源键：pathname 末两段（父目录 + 文件名），忽略查询串签名、镜像域名与 CDN 路径前缀差异
+// （B站同一文件会以 upos-*.bilivideo.com/upgcxcode/... 与 mcdn.bilivideo.cn/v1/resource/upgcxcode/... 两种形态请求）
 const resourceKey = (url) => {
   try {
-    return new URL(url).pathname;
+    const segs = new URL(url).pathname.split('/').filter(Boolean);
+    return segs.slice(-2).join('/');
   } catch {
     return url;
   }
