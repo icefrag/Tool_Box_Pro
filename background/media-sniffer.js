@@ -27,7 +27,8 @@ export class MediaSniffer {
   async start() {
     // 事件监听必须同步注册（MV3 要求），开关状态异步恢复
     chrome.webRequest.onBeforeRequest.addListener((d) => this.onRequest(d), { urls: ['<all_urls>'] });
-    chrome.webRequest.onHeadersReceived.addListener((d) => this.onHeaders(d), { urls: ['<all_urls>'] });
+    // responseHeaders 必须显式声明 extraInfoSpec，否则 details.responseHeaders 恒为 undefined
+    chrome.webRequest.onHeadersReceived.addListener((d) => this.onHeaders(d), { urls: ['<all_urls>'] }, ['responseHeaders']);
     chrome.tabs.onRemoved.addListener((tabId) => this.cleanup(tabId));
     await this.loadState();
   }

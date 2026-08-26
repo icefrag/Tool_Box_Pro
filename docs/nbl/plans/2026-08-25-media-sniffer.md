@@ -1660,6 +1660,14 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
   验证双轨结构、样本数无损；node 侧经 CJS 快照加载 UMD
 - **踩坑记录**：mp4box `addTrack` 的 `samplerate` 必须传原始值（写出时内部做 16.16 定点转换，调用方预移位会溢出为 0）
 
+## v2.1 修订（诊断确认：响应头从未拿到）
+
+- **根因**：`onHeadersReceived` 注册时漏传 `extraInfoSpec: ['responseHeaders']`，`details.responseHeaders` 恒为 undefined，
+  所有条目 contentType/contentLength 均为空。连锁后果：audio.m4s 因拿不到 `audio/mp4` 头被 ext 分支判成 video-stream
+  （音频流从未正确入列）→「合并下载」前置条件（存在 audio-stream 条目）永不满足；列表大小不显示、下载进度无总量
+- **修复**：注册监听时显式声明 `['responseHeaders']`
+- 诊断方法：SW 控制台读 `chrome.storage.session` 中 `media:*` 记录的 `contentType`/`contentLength` 字段
+
 ---
 
 **Execution Mode:** parallel（任务依赖层级：[1,2,3,4] → [5,6] → [7] → [8]）
