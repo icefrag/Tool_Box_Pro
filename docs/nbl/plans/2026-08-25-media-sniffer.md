@@ -1676,6 +1676,7 @@ git commit -m "feat(media-sniffer): add webRequest/downloads/dnr/offscreen permi
 - **已知限制明示**：webRequest 无历史回溯，开启嗅探前已加载的流无法捕获（刷新页面重新请求即可）；
   嗅探中状态下提示文案改为「已在播放的页面需刷新后才能捕获」
 - 附加：popup 工具卡片新增 `checkAvailability` 可用性预检钩子（XPath 在浏览器内部页/扩展页置灰并提示）
+- 移除工具栏「↻ 刷新」按钮：1s 轮询 + storage 事件双保险下，列表最多滞后一秒自动更新，手动刷新无实际作用（历史遗留）
 
 ---
 

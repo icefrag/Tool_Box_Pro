@@ -28,7 +28,6 @@ export class MediaTool extends BaseTool {
       <div class="media-toolbar">
         <button class="media-toggle-btn">▶ 开始嗅探</button>
         <span class="media-hint">开启后播放页面视频即可捕获</span>
-        <button class="media-refresh-btn" title="刷新列表">↻ 刷新</button>
         <button class="media-clear-btn">清空</button>
       </div>
       <div class="media-list"></div>
@@ -40,7 +39,6 @@ export class MediaTool extends BaseTool {
       this.emptyEl.textContent = '开启嗅探后，任意标签页播放的媒体都会出现在这里';
     }
     this.element.querySelector('.media-toggle-btn').addEventListener('click', () => this.toggleSniffing());
-    this.element.querySelector('.media-refresh-btn').addEventListener('click', () => this.refresh());
     this.element.querySelector('.media-clear-btn').addEventListener('click', () => this.clear());
   }
 

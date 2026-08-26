@@ -37,20 +37,6 @@
   text-overflow: ellipsis;
 }
 
-.media-refresh-btn {
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.media-refresh-btn:hover {
-  background: #f3f4f6;
-}
-
 .media-clear-btn {
   border: 1px solid #d1d5db;
   background: #fff;
