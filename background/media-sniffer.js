@@ -120,7 +120,9 @@ export class MediaSniffer {
     }
 
     // 独立流/直链：小体积噪声过滤
-    if (contentLength && contentLength < MIN_BYTES) return;
+    // （m4s/ts 是 Range 分块加载常态，首块常小于阈值，不参与过滤）
+    const chunkedExt = cls.ext === 'm4s' || cls.ext === 'ts';
+    if (!chunkedExt && contentLength && contentLength < MIN_BYTES) return;
     const isAudio = cls.streamKind === 'audio';
     await this.upsert(details.tabId, {
       id: `rec-${details.requestId}`,
@@ -140,7 +142,15 @@ export class MediaSniffer {
     if (records[record.id]) {
       Object.assign(records[record.id], record);
     } else {
-      if (Object.values(records).some((r) => resourceKey(r.url) === resourceKey(record.url))) return; // 同资源去重（忽略签名参数）
+      // 同资源（Range 分块）再次请求：不重复入列，仅在拿到更大块时更新大小
+      const existing = Object.values(records).find((r) => resourceKey(r.url) === resourceKey(record.url));
+      if (existing) {
+        if (record.contentLength > (existing.contentLength || 0)) {
+          existing.contentLength = record.contentLength;
+          await this.write(tabId, records);
+        }
+        return;
+      }
       records[record.id] = record;
       // 容量上限：挤出最旧的
       const all = Object.values(records).sort((a, b) => a.firstSeenAt - b.firstSeenAt);

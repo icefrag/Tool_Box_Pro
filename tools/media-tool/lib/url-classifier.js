@@ -24,6 +24,19 @@ export function isMediaContentType(contentType) {
   return MEDIA_CONTENT_TYPE_PREFIXES.some((p) => ct.startsWith(p));
 }
 
+// B站 DASH 音频码率档编号（30216=64k 30232=132k 30250=杜比 30251=Hi-Res 30280=192k）
+// B站 CDN 对 audio.m4s 也返回 video/mp4，Content-Type 无法区分音视频，只能按编号识别
+const BILIBILI_AUDIO_CODE_RE = /-(30216|30232|30250|30251|30280)\.m4s$/i;
+
+export function isBilibiliAudioM4s(url) {
+  try {
+    const u = new URL(url);
+    return u.hostname.includes('bilivideo') && BILIBILI_AUDIO_CODE_RE.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 // 返回 null 表示非媒体；否则 { ext, streamKind }
 // streamKind: 'playlist' | 'segment' | 'video' | 'audio'
 export function classifyMediaRequest(url, contentType = '') {
@@ -34,7 +47,11 @@ export function classifyMediaRequest(url, contentType = '') {
 
   if (ext === 'm3u8') return { ext, streamKind: 'playlist' };
   if (typeMatch) {
-    return { ext, streamKind: contentType.toLowerCase().startsWith('audio/') ? 'audio' : 'video' };
+    const isAudio = contentType.toLowerCase().startsWith('audio/') || isBilibiliAudioM4s(url);
+    return { ext, streamKind: isAudio ? 'audio' : 'video' };
+  }
+  if (ext === 'm4s' && isBilibiliAudioM4s(url)) {
+    return { ext, streamKind: 'audio' };
   }
   return { ext, streamKind: ext === 'ts' || ext === 'm4s' ? 'segment' : 'video' };
 }

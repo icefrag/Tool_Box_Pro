@@ -34,4 +34,16 @@ assert.deepEqual(classifyMediaRequest('https://x.com/s/001.ts'), { ext: 'ts', st
 // 非媒体
 assert.equal(classifyMediaRequest('https://x.com/a.png'), null);
 assert.equal(classifyMediaRequest('https://x.com/page', 'text/html'), null);
+
+// B站 DASH：CDN 对 audio.m4s 也返回 video/mp4，按编号档识别音频
+import { isBilibiliAudioM4s } from '../lib/url-classifier.js';
+assert.equal(isBilibiliAudioM4s('https://upos-sz-mirror08c.bilivideo.com/upgcxcode/a/b/123/123-1-30232.m4s?upsig=x'), true);
+assert.equal(isBilibiliAudioM4s('https://xy1x2.mcdn.bilivideo.cn:8082/v1/resource/upgcxcode/a/b/123-1-30280.m4s'), true);
+assert.equal(isBilibiliAudioM4s('https://upos-sz-mirror08c.bilivideo.com/upgcxcode/a/b/123/123-1-100024.m4s'), false);
+assert.equal(isBilibiliAudioM4s('https://other.com/a/123-1-30232.m4s'), false, '非 bilivideo 域不做特判');
+// audio.m4s 即使带 video/mp4 头也应判为音频
+assert.deepEqual(
+  classifyMediaRequest('https://upos-sz-mirror08c.bilivideo.com/upgcxcode/a/b/123/123-1-30280.m4s', 'video/mp4'),
+  { ext: 'm4s', streamKind: 'audio' }
+);
 console.log('test-url-classifier ok');
