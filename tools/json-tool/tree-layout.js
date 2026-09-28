@@ -1,35 +1,79 @@
 // 表格化横向树布局（纯函数，无 DOM / chrome API 依赖）
 // 每个 object/array 节点渲染为一个紧凑表格：高度只由自身行数决定，行距固定。
 // 展开行的子树盒（该行挂出的全部内容）垂直居中于行中心；同级子树盒自上而下推挤防重叠。
-// 透明数组（元素全为非空复合节点）不建中转表格：元素子树直接挂到数组行。
-// 返回 { rows: Map<path,{x,y,w,node}>, tables: Map<path,{x,y,w,h,node}>,
+// 透明数组（元素全为非空复合但含非对象）不建中转表格：元素子树直接挂到数组行。
+// 网格数组（元素全为非空对象，node.grid）渲染为一张网格表格：表头=字段并集、行=元素，
+// 复合值单元格挂子表格（递归同规则），整张网格由数组行的折叠状态收起/展开。
+// 返回 { rows: Map<path,{x,y,w,node}>, tables: Map<path,{x,y,w,h,node,kind?}>,
 //        visible: Set<path>, edges: {from,to}[], bounds }
-// edges：from = 起始行 path（普通表格=表格自身；透明数组=数组行），to = 目标表格 path
-export const LAYOUT = { TABLE_W: 300, ROW_H: 24, TABLE_GAP: 60, PAD_X: 8, PAD_Y: 4, SUBTREE_GAP: 10 };
-const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
+// edges：from = 起始行/单元格 path（普通表格=表格自身；透明数组=数组行；网格=数组行或单元格），to = 目标表格 path
+// 列起点：同深度表格左缘对齐；列宽取该深度可见表格的最大宽（网格比普通表格宽时整列右移防重叠）
+export const LAYOUT = {
+  TABLE_W: 300, ROW_H: 24, TABLE_GAP: 60, PAD_X: 8, PAD_Y: 4, SUBTREE_GAP: 10,
+  GRID_COL_W: 120, GRID_MAX_W: 600,
+};
 
 export function layoutTree(root, collapsed = new Set()) {
   const rows = new Map();
   const tables = new Map();
   const visible = new Set();
 
-  const tableH = (node) => Math.max(LAYOUT.ROW_H, node.children.length * LAYOUT.ROW_H) + LAYOUT.PAD_Y * 2;
+  const tableW = (node) => (node.grid
+    ? Math.min(node.grid.cols.length * LAYOUT.GRID_COL_W, LAYOUT.GRID_MAX_W)
+    : LAYOUT.TABLE_W);
+  const tableH = (node) => (node.grid
+    ? 1 + node.children.length
+    : Math.max(1, node.children ? node.children.length : 0)) * LAYOUT.ROW_H + LAYOUT.PAD_Y * 2;
   const isExpanded = (node) => node.children && node.children.length > 0 && !collapsed.has(node.id);
+
+  // 第一遍：收集每个深度的最大表格宽度（展开/下钻规则与第二遍 layoutNode/expandInto 一致）
+  const colWidths = new Map();
+  const measure = (node, depth) => {
+    colWidths.set(depth, Math.max(colWidths.get(depth) || 0, tableW(node)));
+    if (node.grid) {
+      for (const elem of node.children) {
+        for (const p of elem.children) {
+          if (isExpanded(p)) measureInto(p, depth + 1);
+        }
+      }
+      return;
+    }
+    for (const child of node.children) {
+      if (isExpanded(child)) measureInto(child, depth + 1);
+    }
+  };
+  // transparent 数组不建表，元素子树与该数组行同挂 targetDepth（镜像 expandInto 的下钻）
+  const measureInto = (child, targetDepth) => {
+    if (child.transparent) {
+      child.children.forEach((e) => measureInto(e, targetDepth));
+      return;
+    }
+    measure(child, targetDepth);
+  };
+  if (root.children && root.children.length > 0) measure(root, 0);
+  else colWidths.set(0, tableW(root));
+
+  const colXs = new Map();
+  let colX = 0;
+  for (const d of [...colWidths.keys()].sort((a, b) => a - b)) {
+    colXs.set(d, colX);
+    colX += colWidths.get(d) + LAYOUT.TABLE_GAP;
+  }
 
   // 递归布局：返回以「子树盒顶部」为原点的局部坐标
   // { height: 子树盒高度, table: 自身表格矩形, rows: [], tables: [], edges: [] }
   function layoutNode(node, depth) {
-    const x = depth * COL_PITCH;
-    const h = tableH(node);
+    const x = colXs.get(depth);
     const out = {
-      height: h,
-      table: { x, y: 0, w: LAYOUT.TABLE_W, h, node },
+      height: tableH(node),
+      table: { x, y: 0, w: tableW(node), h: tableH(node), node },
       rows: [],
       tables: [],
       edges: [],
     };
+    if (node.grid) out.table.kind = 'grid';
     let minY = 0;
-    let maxY = h;
+    let maxY = out.height;
     let cursor = -Infinity;
     const attach = (sub, y, fromPath) => {
       out.rows.push(...sub.rows.map((r) => ({ ...r, y: r.y + y })));
@@ -40,20 +84,33 @@ export function layoutTree(root, collapsed = new Set()) {
       cursor = y + sub.height + LAYOUT.SUBTREE_GAP;
     };
     // 展开行 child：透明数组不建表，其元素（含嵌套透明链）都挂到同一行
-    const expandInto = (child, rowPath, rowY, depth) => {
+    const expandInto = (child, rowPath, rowY, d) => {
       if (child.transparent) {
-        for (const elem of child.children) expandInto(elem, rowPath, rowY, depth);
+        for (const elem of child.children) expandInto(elem, rowPath, rowY, d);
         return;
       }
-      const sub = layoutNode(child, depth + 1);
+      const sub = layoutNode(child, d + 1);
       const preferred = rowY + LAYOUT.ROW_H / 2 - sub.height / 2;
       attach(sub, Math.max(preferred, cursor), rowPath);
     };
-    node.children.forEach((child, i) => {
-      const rowY = LAYOUT.PAD_Y + i * LAYOUT.ROW_H;
-      out.rows.push({ x: x + LAYOUT.PAD_X, y: rowY, w: LAYOUT.TABLE_W - LAYOUT.PAD_X * 2, node: child });
-      if (isExpanded(child)) expandInto(child, child.id, rowY, depth);
-    });
+    if (node.grid) {
+      // 网格：跳过表头，每元素一行；单元格进 rows，复合值单元格挂子表
+      const colW = out.table.w / node.grid.cols.length;
+      node.children.forEach((elem, i) => {
+        const rowY = LAYOUT.PAD_Y + (1 + i) * LAYOUT.ROW_H;
+        for (const p of elem.children) {
+          const ci = node.grid.cols.indexOf(p.label);
+          out.rows.push({ x: x + ci * colW, y: rowY, w: colW, node: p });
+          if (isExpanded(p)) expandInto(p, p.id, rowY, depth);
+        }
+      });
+    } else {
+      node.children.forEach((child, i) => {
+        const rowY = LAYOUT.PAD_Y + i * LAYOUT.ROW_H;
+        out.rows.push({ x: x + LAYOUT.PAD_X, y: rowY, w: out.table.w - LAYOUT.PAD_X * 2, node: child });
+        if (isExpanded(child)) expandInto(child, child.id, rowY, depth);
+      });
+    }
     // 子树盒归一化：整体平移使盒顶为 0
     if (minY !== 0) {
       out.table.y -= minY;

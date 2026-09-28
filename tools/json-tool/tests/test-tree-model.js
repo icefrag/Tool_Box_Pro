@@ -52,12 +52,23 @@ assert.equal(tree.children[0].valueText, '1');
   assert.equal(findNodeById(tree, '$.not-exist'), null);
 }
 
-// transparent：元素全为非空复合节点的数组才透明
+// grid：元素全部为非空对象的数组 → grid = { cols: 字段并集（首次出现顺序） }，不再透明直挂
 {
-  const t = buildTree(parseJson('{"objs":[{"a":1},{"b":2}],"tags":["x"],"mix":[{"a":1},"s"],"empties":[{},{}]}').ast);
-  assert.equal(t.children[0].transparent, true);   // objs：对象数组
-  assert.equal(t.children[1].transparent, false);  // tags：标量数组
-  assert.equal(t.children[2].transparent, false);  // mix：混合
-  assert.equal(t.children[3].transparent, false);  // empties：空对象元素
-  assert.equal(t.transparent, undefined);          // 对象不透明
+  const t = buildTree(parseJson(
+    '{"objs":[{"a":1},{"b":2,"a":3}],"tags":["x"],"mix":[{"a":1},"s"],"empties":[{},{}],"nested":[[{"a":1}]]}'
+  ).ast);
+  const [objs, tags, mix, empties, nested] = t.children;
+  assert.deepEqual(objs.grid, { cols: ['a', 'b'] });
+  assert.equal(objs.transparent, undefined);     // grid 与 transparent 互斥
+  assert.equal(tags.grid, undefined);            // 标量数组不网格化
+  assert.equal(mix.grid, undefined);             // 混合数组不网格化
+  assert.equal(empties.grid, undefined);         // 空对象元素不网格化
+  assert.equal(nested.grid, undefined);          // 嵌套数组（元素非对象）不网格化
+  assert.equal(nested.transparent, true);        // 全复合但非全对象 → 仍透明直挂
+  assert.equal(tags.transparent, false);
+  assert.equal(mix.transparent, false);
+  assert.equal(empties.transparent, false);
+  assert.equal(t.transparent, undefined);        // 对象既无 grid 也不透明
+  assert.equal(t.grid, undefined);
 }
+

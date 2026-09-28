@@ -1,8 +1,10 @@
 // AST → 树节点模型（纯函数，无 DOM / chrome API 依赖）
 // TreeNode：{ id(path), label, type, valueText, searchText, childCount, children|null,
-//             transparent?, start, end, keyStart?, keyEnd?, parent }
-// transparent：仅数组可能为 true——元素全部为非空复合节点时，渲染层跳过数组中转表格，
-//              元素表格直接挂到数组行（标量/混合/空元素数组与根数组不透明）
+//             grid?, transparent?, start, end, keyStart?, keyEnd?, parent }
+// grid：仅数组可能有——元素全部为非空对象时 grid = { cols }（字段并集，首次出现顺序），
+//       渲染层据此把数组画成一张网格表格（表头=字段名、行=元素），嵌套递归
+// transparent：仅数组可能为 true——元素全部为非空复合但含非对象（如嵌套数组）时，
+//              渲染层跳过数组中转表格，元素表格直接挂到数组行（与 grid 互斥）
 import { childPath, itemPath } from './json-parser.js';
 
 const VALUE_TEXT_MAX = 30;
@@ -35,8 +37,20 @@ function fromValueNode(astNode, label, path, keyRange, parent) {
   } else if (astNode.type === 'array') {
     node.children = astNode.items.map((item, i) => fromValueNode(item, `[${i}]`, itemPath(path, i), null, node));
     node.childCount = node.children.length;
-    node.transparent = node.children.length > 0
+    const allCompound = node.children.length > 0
       && node.children.every((c) => c.children !== null && c.children.length > 0);
+    if (allCompound && node.children.every((c) => c.type === 'object')) {
+      const cols = [];
+      const seen = new Set();
+      for (const elem of node.children) {
+        for (const p of elem.children) {
+          if (!seen.has(p.label)) { seen.add(p.label); cols.push(p.label); }
+        }
+      }
+      node.grid = { cols };
+    } else {
+      node.transparent = allCompound;
+    }
   } else {
     node.valueText = summarize(astNode.value);
     // searchText：未截断全文，供搜索匹配（valueText 仅用于显示，可能截断）

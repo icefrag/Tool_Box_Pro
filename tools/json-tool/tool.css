@@ -191,6 +191,23 @@ body {
 .tg-row.dim { opacity: 0.22; }
 .tg-row.focused .tg-row-bg { fill: #eceaff; }
 
+/* ── 网格表格（对象数组） ────────────── */
+.tg-grid-head { fill: #eef0f6; }
+.tg-grid-head-text { font-size: 12px; fill: #555; font-weight: 700; }
+.tg-grid-line { stroke: #e6e8f0; stroke-width: 1; }
+
+.tg-grid-row { cursor: pointer; }
+.tg-grid-row:hover .tg-row-bg { fill: transparent; } /* 行 hover 交给单元格，避免叠加 */
+.tg-grid-row.focused .tg-row-bg { fill: #eceaff; }
+
+.tg-cell { cursor: pointer; }
+.tg-cell-bg { fill: transparent; }
+.tg-cell:hover .tg-cell-bg { fill: #f0f0fa; }
+.tg-cell.matched .tg-cell-bg { fill: #fff3e0; }
+.tg-cell.current .tg-cell-bg { fill: #ffe3bd; }
+.tg-cell.dim { opacity: 0.22; }
+.tg-cell.focused .tg-cell-bg { fill: #eceaff; }
+
 /* ── 编辑器联动 / 搜索高亮 ──────────── */
 .CodeMirror { font-family: Consolas, Menlo, monospace; }
 .cm-sync-highlight { background: #fff3c4; }

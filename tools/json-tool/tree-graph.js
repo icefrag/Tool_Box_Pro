@@ -36,6 +36,18 @@ export function ellipsize(text, maxUnits) {
   return t;
 }
 
+// 复合值徽标文本：{} / [] / {n} / [n]
+function badgeText(node) {
+  const [open, close] = node.type === 'object' ? ['{', '}'] : ['[', ']'];
+  return open + (node.children.length || '') + close;
+}
+
+// 悬停提示全文：复合值显示容器计数徽标，标量显示未截断全文
+function titleText(node) {
+  const summary = node.children ? badgeText(node) : (node.searchText ?? node.valueText);
+  return `${node.label}: ${summary}`;
+}
+
 export class TreeGraph {
   constructor(svg) {
     this.svg = svg;
@@ -272,6 +284,7 @@ export class TreeGraph {
   }
 
   _tableCard(table, rows) {
+    if (table.node.grid) return this._gridCard(table, rows);
     const node = table.node;
     const g = svgEl('g', {
       class: 'tg-table',
@@ -320,9 +333,7 @@ export class TreeGraph {
 
     // 悬停显示完整内容（值列显示时被截断，title 里给全文）
     const title = svgEl('title');
-    title.textContent = node.children
-      ? `${node.label}: ${node.type === 'object' ? `{${node.childCount}}` : `[${node.childCount}]`}`
-      : `${node.label}: ${node.searchText ?? node.valueText}`;
+    title.textContent = titleText(node);
     g.appendChild(title);
 
     const key = svgEl('text', { class: 'tg-key', x: 4, y: LAYOUT.ROW_H / 2 + 4 });
@@ -331,11 +342,9 @@ export class TreeGraph {
 
     if (node.children) {
       // 复合行：{n} / [n] 徽标（空容器显示 {} / []），徽标可点击展开/收起
-      const badgeText = node.children.length === 0
-        ? (node.type === 'object' ? '{}' : '[]')
-        : (node.type === 'object' ? `{${node.childCount}}` : `[${node.childCount}]`);
+      const text = badgeText(node);
       if (isExpanded) {
-        const bw = badgeText.length * 7.5 + 12;
+        const bw = text.length * 7.5 + 12;
         g.appendChild(svgEl('rect', {
           x: row.w - 4 - bw,
           y: 3,
@@ -352,7 +361,7 @@ export class TreeGraph {
         'text-anchor': 'end',
         fill: isExpanded ? '#ffffff' : color,
       });
-      badge.textContent = badgeText;
+      badge.textContent = text;
       g.appendChild(badge);
       if (expandable) {
         const hit = svgEl('rect', {
@@ -385,9 +394,165 @@ export class TreeGraph {
     return g;
   }
 
+  // 网格表格：表头=字段并集，每元素一行；单元格=元素属性，复合值显示徽标（点击折叠子表格）
+  _gridCard(table, rows) {
+    const node = table.node;
+    const cols = node.grid.cols;
+    const colW = table.w / cols.length;
+    const g = svgEl('g', {
+      class: 'tg-table',
+      transform: `translate(${table.x},${table.y})`,
+      'data-path': node.id,
+    });
+    g.appendChild(svgEl('rect', {
+      class: 'tg-table-bg',
+      width: table.w,
+      height: table.h,
+      rx: 8,
+      fill: '#ffffff',
+      stroke: TYPE_COLORS[node.type] || '#999999',
+      'stroke-width': 1.5,
+    }));
+
+    // 表头行
+    g.appendChild(svgEl('rect', {
+      class: 'tg-grid-head',
+      x: 1,
+      y: LAYOUT.PAD_Y,
+      width: table.w - 2,
+      height: LAYOUT.ROW_H,
+    }));
+    cols.forEach((label, ci) => {
+      const t = svgEl('text', {
+        class: 'tg-grid-head-text',
+        x: ci * colW + 6,
+        y: LAYOUT.PAD_Y + LAYOUT.ROW_H / 2 + 4,
+      });
+      t.textContent = ellipsize(label, Math.max(4, Math.floor((colW - 12) / 7)));
+      g.appendChild(t);
+    });
+
+    // 列分隔线（贯穿表头与数据行）
+    for (let ci = 1; ci < cols.length; ci++) {
+      g.appendChild(svgEl('line', {
+        class: 'tg-grid-line',
+        x1: ci * colW,
+        y1: LAYOUT.PAD_Y,
+        x2: ci * colW,
+        y2: table.h - LAYOUT.PAD_Y,
+      }));
+    }
+
+    node.children.forEach((elem, i) => {
+      const rowY = LAYOUT.PAD_Y + (1 + i) * LAYOUT.ROW_H;
+      if (i < node.children.length - 1) {
+        g.appendChild(svgEl('line', {
+          class: 'tg-grid-line',
+          x1: 1,
+          y1: rowY + LAYOUT.ROW_H,
+          x2: table.w - 1,
+          y2: rowY + LAYOUT.ROW_H,
+        }));
+      }
+      const rowG = svgEl('g', {
+        class: 'tg-row tg-grid-row',
+        transform: `translate(0,${rowY})`,
+        'data-path': elem.id,
+      });
+      rowG.appendChild(svgEl('rect', { class: 'tg-row-bg', width: table.w, height: LAYOUT.ROW_H }));
+      const title = svgEl('title');
+      title.textContent = titleText(elem);
+      rowG.appendChild(title);
+      rowG.addEventListener('click', () => {
+        if (this.onNodeClick) this.onNodeClick(elem);
+      });
+      this.rowEls.set(elem.id, rowG);
+      for (const p of elem.children) {
+        const cell = this._gridCell(p, rows.get(p.id), table);
+        this.rowEls.set(p.id, cell);
+        rowG.appendChild(cell);
+      }
+      g.appendChild(rowG);
+    });
+    return g;
+  }
+
+  // 网格单元格：标量显示值；复合值显示居中徽标，徽标可点击折叠、格内其余区域点击联动编辑器
+  _gridCell(node, cell, table) {
+    const color = TYPE_COLORS[node.type] || '#333333';
+    const expandable = node.children && node.children.length > 0;
+    const isExpanded = expandable && !this.collapsed.has(node.id);
+    const g = svgEl('g', {
+      class: 'tg-cell',
+      transform: `translate(${cell.x - table.x},${cell.y - table.y})`,
+      'data-path': node.id,
+    });
+    g.appendChild(svgEl('rect', { class: 'tg-cell-bg', width: cell.w, height: LAYOUT.ROW_H }));
+
+    const title = svgEl('title');
+    title.textContent = titleText(node);
+    g.appendChild(title);
+
+    if (node.children) {
+      const text = badgeText(node);
+      const bw = text.length * 7.5 + 12;
+      if (isExpanded) {
+        g.appendChild(svgEl('rect', {
+          x: (cell.w - bw) / 2,
+          y: 3,
+          width: bw,
+          height: LAYOUT.ROW_H - 6,
+          rx: 4,
+          fill: color,
+        }));
+      }
+      const badge = svgEl('text', {
+        class: 'tg-badge',
+        x: cell.w / 2,
+        y: LAYOUT.ROW_H / 2 + 4,
+        'text-anchor': 'middle',
+        fill: isExpanded ? '#ffffff' : color,
+      });
+      badge.textContent = text;
+      g.appendChild(badge);
+      if (expandable) {
+        const hit = svgEl('rect', {
+          class: 'tg-badge-hit',
+          x: (cell.w - bw) / 2 - 6,
+          width: bw + 12,
+          height: LAYOUT.ROW_H,
+          fill: 'transparent',
+        });
+        hit.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (this.onToggleCollapse) this.onToggleCollapse(node);
+        });
+        g.appendChild(hit);
+      }
+    } else {
+      const val = svgEl('text', {
+        class: 'tg-val',
+        x: 6,
+        y: LAYOUT.ROW_H / 2 + 4,
+      });
+      val.textContent = ellipsize(node.valueText, Math.max(4, Math.floor((cell.w - 12) / 6.5)));
+      g.appendChild(val);
+    }
+
+    g.addEventListener('click', () => {
+      if (this.onNodeClick) this.onNodeClick(node);
+    });
+    return g;
+  }
+
   _updateStates() {
     const hasQuery = this.matchedPaths !== null;
     for (const [id, el] of this.rowEls) {
+      // 网格数据行只做焦点高亮：不参与匹配/淡化，避免整行半透明压暗其中命中的单元格
+      if (el.classList.contains('tg-grid-row')) {
+        el.classList.toggle('focused', this.focusPath === id);
+        continue;
+      }
       const matched = hasQuery && this.matchedPaths.has(id);
       el.classList.toggle('matched', matched);
       el.classList.toggle('current', this.currentPath === id);
