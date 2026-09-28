@@ -62,6 +62,7 @@ export class TreeGraph {
     this.tx = 0;
     this.ty = 0;
     this.rowEls = new Map();
+    this.gridRows = new Map(); // 网格数据行几何（元素节点不在 layout.rows/tables，focusNode 兜底用）
     this._layout = null;
 
     // 缩略图（minimap）状态
@@ -250,6 +251,7 @@ export class TreeGraph {
     this.edgesLayer.innerHTML = '';
     this.nodesLayer.innerHTML = '';
     this.rowEls = new Map();
+    this.gridRows = new Map();
     if (!root) {
       this._layout = null;
       this._hideMinimap();
@@ -467,6 +469,7 @@ export class TreeGraph {
         if (this.onNodeClick) this.onNodeClick(elem);
       });
       this.rowEls.set(elem.id, rowG);
+      this.gridRows.set(elem.id, { x: table.x, y: table.y + rowY, w: table.w, h: LAYOUT.ROW_H });
       for (const p of elem.children) {
         const cell = this._gridCell(p, rows.get(p.id), table);
         this.rowEls.set(p.id, cell);
@@ -574,7 +577,9 @@ export class TreeGraph {
 
   focusNode(path) {
     const layout = this._layout;
-    const target = (layout && layout.rows.get(path)) || (layout && layout.tables.get(path));
+    const target = (layout && layout.rows.get(path))
+      || (layout && layout.tables.get(path))
+      || this.gridRows.get(path);
     if (!target) return;
     const h = target.h || LAYOUT.ROW_H;
     const r = this.svg.getBoundingClientRect();

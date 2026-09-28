@@ -64,9 +64,10 @@ export function layoutTree(root, collapsed = new Set()) {
   // { height: 子树盒高度, table: 自身表格矩形, rows: [], tables: [], edges: [] }
   function layoutNode(node, depth) {
     const x = colXs.get(depth);
+    const h = tableH(node);
     const out = {
-      height: tableH(node),
-      table: { x, y: 0, w: tableW(node), h: tableH(node), node },
+      height: h,
+      table: { x, y: 0, w: tableW(node), h, node },
       rows: [],
       tables: [],
       edges: [],
