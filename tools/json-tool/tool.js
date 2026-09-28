@@ -6,40 +6,36 @@ export class JsonTool extends BaseTool {
   constructor() {
     super('JSON 树图工具', TOOL_TYPES.JSON_TREE);
     this.name = 'JSON 树图工具';
-    this.description = 'JSON 可视化树图，支持搜索与编辑器联动';
+    this.description = 'JSON 可视化树图，支持搜索与编辑器联动，点击打开全屏页面';
     this.icon = '🌳';
-    this.createElement();
   }
 
-  createElement() {
-    this.element = document.createElement('div');
-    this.element.className = 'json-tool-launcher';
-    this.element.innerHTML = `
-      <p class="json-tool-tip">JSON 树图工具在全屏页面中打开，适合编辑与查看大型 JSON。</p>
-      <button id="open-json-tool" class="primary-button">打开 JSON 树图页面</button>
-    `;
-    this.element.querySelector('#open-json-tool').addEventListener('click', () => this.execute());
+  // 点击工具卡片直接打开全屏页（popup.js openExternal 钩子），已打开则复用并聚焦
+  async openExternal() {
+    try {
+      const url = chrome.runtime.getURL('tools/json-tool/index.html');
+      const tabs = await chrome.tabs.query({ url });
+      if (tabs.length > 0) {
+        await chrome.tabs.update(tabs[0].id, { active: true });
+        const win = await chrome.windows.get(tabs[0].windowId);
+        if (!win.focused) await chrome.windows.update(tabs[0].windowId, { focused: true });
+      } else {
+        await chrome.tabs.create({ url });
+      }
+      window.close();
+      return true;
+    } catch (e) {
+      console.error('[JsonTool] 打开全屏页失败:', e);
+      return false;
+    }
   }
 
-  async initialize() {
-    this.log('JSON 树图工具初始化完成');
-  }
+  async initialize() {}
 
   async execute() {
-    const url = chrome.runtime.getURL('tools/json-tool/index.html');
-    const tabs = await chrome.tabs.query({ url });
-    if (tabs.length > 0) {
-      await chrome.tabs.update(tabs[0].id, { active: true });
-      const win = await chrome.windows.get(tabs[0].windowId);
-      if (!win.focused) await chrome.windows.update(tabs[0].windowId, { focused: true });
-    } else {
-      await chrome.tabs.create({ url });
-    }
-    return { success: true, message: '已打开 JSON 树图页面' };
+    const ok = await this.openExternal();
+    return { success: ok, message: ok ? '已打开 JSON 树图页面' : '打开 JSON 树图页面失败' };
   }
 
-  async destroy() {
-    this.log('JSON 树图工具已销毁');
-    this.element = null;
-  }
+  async destroy() {}
 }
