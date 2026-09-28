@@ -485,9 +485,10 @@ export class TreeGraph {
     const color = TYPE_COLORS[node.type] || '#333333';
     const expandable = node.children && node.children.length > 0;
     const isExpanded = expandable && !this.collapsed.has(node.id);
+    // 单元格挂在数据行 g 内部（行已平移到 rowY），此处只做列偏移，勿再减表格原点
     const g = svgEl('g', {
       class: 'tg-cell',
-      transform: `translate(${cell.x - table.x},${cell.y - table.y})`,
+      transform: `translate(${cell.x - table.x},0)`,
       'data-path': node.id,
     });
     g.appendChild(svgEl('rect', { class: 'tg-cell-bg', width: cell.w, height: LAYOUT.ROW_H }));
