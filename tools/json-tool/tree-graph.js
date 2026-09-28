@@ -4,13 +4,14 @@ import { layoutTree, LAYOUT } from './tree-layout.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// JSON 六类型语义色(暗色主题)——与 tool.css 的 --c-* token 同源,编辑器 token 色一致
 export const TYPE_COLORS = {
-  object: '#764ba2',
-  array: '#2f80ed',
-  string: '#27ae60',
-  number: '#e67e22',
-  boolean: '#17a2b8',
-  null: '#828282',
+  object: '#b39ddb',
+  array: '#6ca8ff',
+  string: '#7ee787',
+  number: '#f4a960',
+  boolean: '#5fd3d3',
+  null: '#7d8590',
 };
 
 function svgEl(tag, attrs = {}) {
@@ -137,8 +138,8 @@ export class TreeGraph {
         y: t.y,
         width: t.w,
         height: t.h,
-        fill: '#ffffff',
-        stroke: TYPE_COLORS[t.node.type] || '#999999',
+        fill: '#161b26',
+        stroke: TYPE_COLORS[t.node.type] || TYPE_COLORS.null,
         'stroke-width': 1 / s,
       }));
     }
@@ -147,7 +148,7 @@ export class TreeGraph {
       const table = tables.get(to);
       this._mmContent.appendChild(svgEl('path', {
         class: 'tg-edge',
-        stroke: '#c5cbe0',
+        stroke: '#39446a',
         'stroke-width': 1 / s,
         fill: 'none',
         d: this._edgePath(row, table).getAttribute('d'),
@@ -298,9 +299,14 @@ export class TreeGraph {
       width: table.w,
       height: table.h,
       rx: 8,
-      fill: '#ffffff',
-      stroke: TYPE_COLORS[node.type] || '#999999',
-      'stroke-width': 1.5,
+    }));
+    // 左侧类型色条:表格内容类型一眼可辨(IDE 文件树图标色心智),边框保持中性
+    g.appendChild(svgEl('rect', {
+      class: 'tg-type-strip',
+      width: 3,
+      height: table.h,
+      rx: 1.5,
+      fill: TYPE_COLORS[node.type] || TYPE_COLORS.null,
     }));
     if (node.children && node.children.length > 0) {
       for (const child of node.children) {
@@ -322,7 +328,7 @@ export class TreeGraph {
   }
 
   _rowCard(node, row, table) {
-    const color = TYPE_COLORS[node.type] || '#333333';
+    const color = TYPE_COLORS[node.type] || TYPE_COLORS.null;
     const expandable = node.children && node.children.length > 0;
     const isExpanded = expandable && !this.collapsed.has(node.id);
     // 行在表格 <g> 内部，需将画布绝对坐标换算为表格相对坐标
@@ -361,7 +367,7 @@ export class TreeGraph {
         x: row.w - 10,
         y: LAYOUT.ROW_H / 2 + 4,
         'text-anchor': 'end',
-        fill: isExpanded ? '#ffffff' : color,
+        fill: isExpanded ? '#0d1017' : color,
       });
       badge.textContent = text;
       g.appendChild(badge);
@@ -381,7 +387,7 @@ export class TreeGraph {
       }
     } else {
       const val = svgEl('text', {
-        class: 'tg-val',
+        class: 'tg-val tg-t-' + node.type,
         x: row.w - 4,
         y: LAYOUT.ROW_H / 2 + 4,
         'text-anchor': 'end',
@@ -411,9 +417,14 @@ export class TreeGraph {
       width: table.w,
       height: table.h,
       rx: 8,
-      fill: '#ffffff',
-      stroke: TYPE_COLORS[node.type] || '#999999',
-      'stroke-width': 1.5,
+    }));
+    // 左侧类型色条:表格内容类型一眼可辨(IDE 文件树图标色心智),边框保持中性
+    g.appendChild(svgEl('rect', {
+      class: 'tg-type-strip',
+      width: 3,
+      height: table.h,
+      rx: 1.5,
+      fill: TYPE_COLORS[node.type] || TYPE_COLORS.null,
     }));
 
     // 表头行
@@ -482,7 +493,7 @@ export class TreeGraph {
 
   // 网格单元格：标量显示值；复合值显示居中徽标，徽标可点击折叠、格内其余区域点击联动编辑器
   _gridCell(node, cell, table) {
-    const color = TYPE_COLORS[node.type] || '#333333';
+    const color = TYPE_COLORS[node.type] || TYPE_COLORS.null;
     const expandable = node.children && node.children.length > 0;
     const isExpanded = expandable && !this.collapsed.has(node.id);
     // 单元格挂在数据行 g 内部（行已平移到 rowY），此处只做列偏移，勿再减表格原点
@@ -515,7 +526,7 @@ export class TreeGraph {
         x: cell.w / 2,
         y: LAYOUT.ROW_H / 2 + 4,
         'text-anchor': 'middle',
-        fill: isExpanded ? '#ffffff' : color,
+        fill: isExpanded ? '#0d1017' : color,
       });
       badge.textContent = text;
       g.appendChild(badge);
@@ -535,7 +546,7 @@ export class TreeGraph {
       }
     } else {
       const val = svgEl('text', {
-        class: 'tg-val',
+        class: 'tg-val tg-t-' + node.type,
         x: 6,
         y: LAYOUT.ROW_H / 2 + 4,
       });
