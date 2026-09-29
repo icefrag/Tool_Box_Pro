@@ -1,13 +1,25 @@
 // AST → 树节点模型（纯函数，无 DOM / chrome API 依赖）
 // TreeNode：{ id(path), label, type, valueText, searchText, childCount, children|null,
 //             grid?, transparent?, start, end, keyStart?, keyEnd?, parent }
-// grid：仅数组可能有——元素全部为非空对象时 grid = { cols }（字段并集，首次出现顺序），
-//       渲染层据此把数组画成一张网格表格（表头=字段名、行=元素），嵌套递归
+// grid：仅数组可能有——元素全部为非空对象时 grid = { cols, kinds, units }：
+//   cols   字段并集（首次出现顺序）
+//   kinds  每列 badge（整列复合值，渲染为徽标窄列）| scalar（含标量，宽列）
+//   units  每列最长内容单位数（含表头 +2 余量；汉字/全角记 2，布局层换算像素）
 // transparent：仅数组可能为 true——元素全部为非空复合但含非对象（如嵌套数组）时，
 //              渲染层跳过数组中转表格，元素表格直接挂到数组行（与 grid 互斥）
 import { childPath, itemPath } from './json-parser.js';
 
 const VALUE_TEXT_MAX = 30;
+
+// CJK / 全角字符（按 2 单位视觉宽度计，与 tree-graph.ellipsize 的宽度逻辑同源）
+const WIDE_CHAR_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/;
+
+function charUnits(text) {
+  const s = String(text ?? '');
+  let units = 0;
+  for (const ch of s) units += WIDE_CHAR_RE.test(ch) ? 2 : 1;
+  return units;
+}
 
 function summarize(value) {
   const text = typeof value === 'string' ? JSON.stringify(value) : String(value);
@@ -41,13 +53,27 @@ function fromValueNode(astNode, label, path, keyRange, parent) {
       && node.children.every((c) => c.children !== null && c.children.length > 0);
     if (allCompound && node.children.every((c) => c.type === 'object')) {
       const cols = [];
+      const kinds = [];
+      const units = [];
       const seen = new Set();
+      const ensureCol = (label) => {
+        if (seen.has(label)) return cols.indexOf(label);
+        seen.add(label);
+        cols.push(label);
+        kinds.push('badge');          // 先按徽标列假设，遇标量改 scalar
+        units.push(charUnits(label) + 2);
+        return cols.length - 1;
+      };
       for (const elem of node.children) {
         for (const p of elem.children) {
-          if (!seen.has(p.label)) { seen.add(p.label); cols.push(p.label); }
+          const ci = ensureCol(p.label);
+          if (p.children === null) {
+            kinds[ci] = 'scalar';
+            units[ci] = Math.max(units[ci], charUnits(p.valueText));
+          }
         }
       }
-      node.grid = { cols };
+      node.grid = { cols, kinds, units };
     } else {
       node.transparent = allCompound;
     }
@@ -86,4 +112,23 @@ export function findNodeById(root, id) {
     }
   }
   return null;
+}
+
+// 默认折叠集：单层子节点超过 autoThreshold 的节点整层收起；
+// 网格行数超过 gridRows 时，其复合单元格默认收起（孙网格递归适用），
+// 用户手动展开由调用方的 userExpanded 抵消
+export function computeDefaultCollapsed(root, { autoThreshold = 50, gridRows = 6 } = {}) {
+  const collapsed = new Set();
+  (function walk(node) {
+    if (node.children && node.children.length > autoThreshold) collapsed.add(node.id);
+    if (node.grid && node.children.length > gridRows) {
+      for (const elem of node.children) {
+        for (const p of elem.children) {
+          if (p.children && p.children.length > 0) collapsed.add(p.id);
+        }
+      }
+    }
+    if (node.children) node.children.forEach(walk);
+  })(root);
+  return collapsed;
 }

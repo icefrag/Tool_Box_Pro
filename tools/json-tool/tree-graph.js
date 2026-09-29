@@ -253,6 +253,9 @@ export class TreeGraph {
     this.nodesLayer.innerHTML = '';
     this.rowEls = new Map();
     this.gridRows = new Map();
+    this.edgeRecords = [];       // hover 血缘高亮用：{ from, to, el }
+    this.tableEls = new Map();   // 表格 path → 渲染元素
+    this.rowCells = new Map();   // 网格数据行 path → 单元格 path 列表
     if (!root) {
       this._layout = null;
       this._hideMinimap();
@@ -263,11 +266,16 @@ export class TreeGraph {
 
     // 连线：每个非根表格对应一条「行右缘 → 子表格左缘」的连线
     for (const { from, to } of edges) {
-      this.edgesLayer.appendChild(this._edgePath(rows.get(from), tables.get(to)));
+      const el = this._edgePath(rows.get(from), tables.get(to));
+      this.edgeRecords.push({ from, to, el });
+      this.edgesLayer.appendChild(el);
     }
     // 表格与行
     for (const table of tables.values()) {
-      this.nodesLayer.appendChild(this._tableCard(table, rows));
+      const g = this._tableCard(table, rows);
+      this.tableEls.set(table.node.id, g);
+      this._hoverLineageTo(g, table.node.id);
+      this.nodesLayer.appendChild(g);
     }
     this._updateStates();
     if (fit) this.fitView();
@@ -396,6 +404,7 @@ export class TreeGraph {
       g.appendChild(val);
     }
 
+    this._hoverLineage(g, () => new Set([node.id]));
     g.addEventListener('click', () => {
       if (this.onNodeClick) this.onNodeClick(node);
     });
@@ -406,7 +415,8 @@ export class TreeGraph {
   _gridCard(table, rows) {
     const node = table.node;
     const cols = node.grid.cols;
-    const colW = table.w / cols.length;
+    const widths = node.grid.widths;
+    const colX = (ci) => widths.slice(0, ci).reduce((a, b) => a + b, 0);
     const g = svgEl('g', {
       class: 'tg-table',
       transform: `translate(${table.x},${table.y})`,
@@ -438,10 +448,10 @@ export class TreeGraph {
     cols.forEach((label, ci) => {
       const t = svgEl('text', {
         class: 'tg-grid-head-text',
-        x: ci * colW + 6,
+        x: colX(ci) + 6,
         y: LAYOUT.PAD_Y + LAYOUT.ROW_H / 2 + 4,
       });
-      t.textContent = ellipsize(label, Math.max(4, Math.floor((colW - 12) / 7)));
+      t.textContent = ellipsize(label, Math.max(4, Math.floor((widths[ci] - 12) / 7)));
       g.appendChild(t);
     });
 
@@ -449,9 +459,9 @@ export class TreeGraph {
     for (let ci = 1; ci < cols.length; ci++) {
       g.appendChild(svgEl('line', {
         class: 'tg-grid-line',
-        x1: ci * colW,
+        x1: colX(ci),
         y1: LAYOUT.PAD_Y,
-        x2: ci * colW,
+        x2: colX(ci),
         y2: table.h - LAYOUT.PAD_Y,
       }));
     }
@@ -481,11 +491,15 @@ export class TreeGraph {
       });
       this.rowEls.set(elem.id, rowG);
       this.gridRows.set(elem.id, { x: table.x, y: table.y + rowY, w: table.w, h: LAYOUT.ROW_H });
+      const cellIds = [];
       for (const p of elem.children) {
+        cellIds.push(p.id);
         const cell = this._gridCell(p, rows.get(p.id), table);
         this.rowEls.set(p.id, cell);
         rowG.appendChild(cell);
       }
+      this.rowCells.set(elem.id, cellIds);
+      this._hoverLineage(rowG, () => new Set(cellIds));
       g.appendChild(rowG);
     });
     return g;
@@ -554,10 +568,67 @@ export class TreeGraph {
       g.appendChild(val);
     }
 
+    this._hoverLineage(g, () => new Set([node.id]));
     g.addEventListener('click', () => {
       if (this.onNodeClick) this.onNodeClick(node);
     });
     return g;
+  }
+
+  // ── hover 血缘高亮：悬停行/单元格 → 它连出的边与目标表格高亮、其余淡化；悬停表格反向亮回来源 ──
+  // fromIds 无任何连线时不改变(标量单元格/根表 hover 不产生「全淡化」)
+  _setLineage(fromIds) {
+    const targets = new Set();
+    let any = false;
+    for (const e of this.edgeRecords) {
+      if (!fromIds.has(e.from)) continue;
+      any = true;
+      targets.add(e.to);
+    }
+    if (!any) return;
+    this._applyLineage((e) => fromIds.has(e.from), targets, fromIds);
+  }
+
+  _setLineageTo(tableId) {
+    const sources = new Set();
+    for (const e of this.edgeRecords) {
+      if (e.to === tableId) sources.add(e.from);
+    }
+    if (sources.size === 0) return;
+    this._applyLineage((e) => e.to === tableId, new Set([tableId]), sources);
+  }
+
+  _applyLineage(edgeOn, targetTables, srcIds) {
+    for (const e of this.edgeRecords) {
+      const on = edgeOn(e);
+      e.el.classList.toggle('lineage', on);
+      e.el.classList.toggle('faded', !on);
+    }
+    for (const [id, el] of this.tableEls) {
+      const on = targetTables.has(id);
+      el.classList.toggle('lineage', on);
+      el.classList.toggle('faded', !on);
+    }
+    for (const id of srcIds) {
+      const el = this.rowEls.get(id);
+      if (el) el.classList.add('lineage-src');
+    }
+  }
+
+  _clearLineage() {
+    for (const e of this.edgeRecords) e.el.classList.remove('lineage', 'faded');
+    for (const el of this.tableEls.values()) el.classList.remove('lineage', 'faded');
+    for (const el of this.rowEls.values()) el.classList.remove('lineage-src');
+  }
+
+  _hoverLineage(el, getFromIds) {
+    el.addEventListener('mouseenter', () => this._setLineage(getFromIds()));
+    el.addEventListener('mouseleave', () => this._clearLineage());
+  }
+
+  _hoverLineageTo(el, tableId) {
+    el.addEventListener('mouseenter', () => this._setLineageTo(tableId));
+    el.addEventListener('mouseleave', () => this._clearLineage());
   }
 
   _updateStates() {

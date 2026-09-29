@@ -234,7 +234,23 @@ body {
 .cm-comment { color: #565f78; }
 
 /* ── 树图(表格布局) ───────────────── */
-.tg-edge { fill: none; stroke: #39446a; stroke-width: 1.5; }
+.tg-edge {
+  fill: none;
+  stroke: #39446a;
+  stroke-width: 1.5;
+  transition: stroke 0.12s, stroke-width 0.12s, opacity 0.12s;
+}
+
+/* hover 血缘:命中的边加粗变紫、目标表格描边亮起,其余边/表淡化 */
+.tg-edge.lineage { stroke: var(--accent-dim); stroke-width: 2.5; }
+.tg-edge.faded { opacity: 0.15; }
+
+.tg-table { transition: opacity 0.12s; }
+.tg-table.lineage .tg-table-bg { stroke: var(--accent-dim); stroke-width: 1.5; }
+.tg-table.faded { opacity: 0.45; }
+
+.tg-row.lineage-src .tg-row-bg,
+.tg-cell.lineage-src .tg-cell-bg { fill: rgba(165, 168, 255, 0.18); }
 
 .tg-table-bg {
   fill: var(--bg-panel);

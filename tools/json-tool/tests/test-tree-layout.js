@@ -212,24 +212,28 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
   const g = tables.get('$.features');
   assert.equal(g.kind, 'grid');
   assert.ok(!tables.has('$.features[0]'));
-  assert.equal(g.w, LAYOUT.GRID_COL_W * 4); // cols = id/title/enabled/tags
   assert.equal(g.h, LAYOUT.ROW_H * (1 + 3) + LAYOUT.PAD_Y * 2);
   assert.ok(rows.has('$.features[0].id'));
   assert.ok(rows.has('$.features[2].tags'));
   assert.ok(!rows.has('$.features[0].tags')); // 元素 0 无 tags 字段 → 无单元格
+  // 徽标列窄、标量列不小于最小宽，各列首尾相接构成表宽
+  const tags = rows.get('$.features[2].tags');
+  assert.equal(tags.w, LAYOUT.GRID_BADGE_W);
+  assert.ok(rows.get('$.features[0].id').w >= LAYOUT.GRID_COL_MIN);
+  assert.equal(g.w, (tags.x - g.x) + tags.w);
   assert.ok(edges.some((e) => e.from === '$.features' && e.to === '$.features'));
   assert.ok(edges.some((e) => e.from === '$.features[2].tags' && e.to === '$.features[2].tags'));
 }
 
-// 单元格按列对齐：同字段跨行同 x，单元格宽 = 表宽 / 列数
+// 单元格按列对齐：同字段跨行同 x，列宽由列画像决定（两列画像相同 → 等宽）
 {
   const { rows, tables } = layoutTree(T(JSON.stringify({ f: [{ a: 1, b: 2 }, { b: 3 }] })));
   const g = tables.get('$.f');
-  const colW = g.w / 2;
+  const colW = rows.get('$.f[0].a').w;
   assert.equal(rows.get('$.f[0].a').x, g.x);
   assert.equal(rows.get('$.f[0].b').x, g.x + colW);
   assert.equal(rows.get('$.f[1].b').x, g.x + colW);
-  assert.equal(rows.get('$.f[0].a').w, colW);
+  assert.equal(g.w, colW * 2);
   assert.equal(rows.get('$.f[0].a').y, LAYOUT.PAD_Y + (1 + 0) * LAYOUT.ROW_H); // 数据行跳过表头
 }
 
@@ -242,20 +246,27 @@ const COL_PITCH = LAYOUT.TABLE_W + LAYOUT.TABLE_GAP;
   assert.ok(edges.some((e) => e.from === '$.rows[0].items' && e.to === '$.rows[0].items'));
 }
 
-// 网格宽度：按列数加宽、封顶 GRID_MAX_W；列宽影响下一层子表 x
+// 网格宽度：徽标列窄宽 + 标量列按内容，超总宽按比例压缩标量列；列宽影响下一层子表 x
 {
-  const wide = layoutTree(T(JSON.stringify({ a: [{ c1: 1, c2: 2, c3: 3, c4: 4, c5: 5, c6: 6, c7: 7, c8: 8 }] })));
-  assert.equal(wide.tables.get('$.a').w, LAYOUT.GRID_MAX_W);
+  // 8 个长内容标量列：原始宽远超总宽上限 → 压缩但不低于最小列宽
+  const long = 'L'.repeat(40);
+  const obj = Object.fromEntries(['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].map((k) => [k, long]));
+  const wide = layoutTree(T(JSON.stringify({ a: [obj] })));
+  const wg = wide.tables.get('$.a');
+  assert.ok(wide.rows.get('$.a[0].c1').w >= LAYOUT.GRID_COL_MIN);
+  assert.ok(wg.w <= LAYOUT.GRID_MAX_W);
+  assert.ok(wg.w > LAYOUT.GRID_COL_MIN * 8); // 压缩后仍显著宽于全最小值
 
   const json = JSON.stringify({ g: [{ a: 1, b: 2, c: 3, e: { x: 1 } }], p: { y: 1 } });
   const { tables } = layoutTree(T(json));
-  assert.equal(tables.get('$.g').w, LAYOUT.GRID_COL_W * 4);
-  // 同层普通表列起点不变；下一列起点因本层最大表宽（网格 480 > 普通 300）右移
+  assert.equal(tables.get('$.g').w, LAYOUT.GRID_COL_MIN * 3 + LAYOUT.GRID_BADGE_W);
+  // 同层普通表列起点不变；下一列起点因本层最大表宽（网格 > 普通 300）右移
   assert.equal(tables.get('$.p').x, COL_PITCH);
-  assert.equal(tables.get('$.g[0].e').x, COL_PITCH + LAYOUT.GRID_COL_W * 4 + LAYOUT.TABLE_GAP);
+  assert.equal(tables.get('$.g[0].e').x, COL_PITCH + LAYOUT.GRID_COL_MIN * 3 + LAYOUT.GRID_BADGE_W + LAYOUT.TABLE_GAP);
 
   // 纯普通表格场景回归：列起点仍为 COL_PITCH
   const plain = layoutTree(T('{"a": {"x": 1}, "b": {"y": 1}}'));
+  assert.equal(plain.tables.get('$.a').x, COL_PITCH);
   assert.equal(plain.tables.get('$.a').x, COL_PITCH);
 }
 

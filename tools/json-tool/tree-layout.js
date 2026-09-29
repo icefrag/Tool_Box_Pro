@@ -10,17 +10,41 @@
 // 列起点：同深度表格左缘对齐；列宽取该深度可见表格的最大宽（网格比普通表格宽时整列右移防重叠）
 export const LAYOUT = {
   TABLE_W: 300, ROW_H: 24, TABLE_GAP: 60, PAD_X: 8, PAD_Y: 4, SUBTREE_GAP: 10,
-  GRID_COL_W: 120, GRID_MAX_W: 600,
+  // 网格列宽：徽标列固定窄宽；标量列按列画像 units 换算(7px/单位+内边距)，clamp 到 [MIN, MAX]
+  GRID_BADGE_W: 64, GRID_COL_MIN: 90, GRID_COL_MAX: 300, GRID_MAX_W: 900,
 };
+
+// 列画像(kinds/units)→像素列宽；总宽超上限时按比例压缩标量列(徽标列不动)，但不低于最小宽。
+// 结果缓存到 grid.widths，供布局(列偏移/表宽)与渲染共用。
+export function computeGridWidths(grid) {
+  const widths = grid.cols.map((_, i) => (grid.kinds[i] === 'badge'
+    ? LAYOUT.GRID_BADGE_W
+    : Math.min(LAYOUT.GRID_COL_MAX, Math.max(LAYOUT.GRID_COL_MIN, grid.units[i] * 7 + 14))));
+  const total = widths.reduce((a, b) => a + b, 0);
+  if (total > LAYOUT.GRID_MAX_W) {
+    const badgeTotal = widths.reduce((a, w, i) => a + (grid.kinds[i] === 'badge' ? w : 0), 0);
+    const scalarTotal = total - badgeTotal;
+    const budget = LAYOUT.GRID_MAX_W - badgeTotal;
+    if (budget > 0 && scalarTotal > budget) {
+      const k = budget / scalarTotal;
+      widths.forEach((w, i) => {
+        if (grid.kinds[i] !== 'badge') widths[i] = Math.max(LAYOUT.GRID_COL_MIN, Math.floor(w * k));
+      });
+    }
+  }
+  return widths;
+}
 
 export function layoutTree(root, collapsed = new Set()) {
   const rows = new Map();
   const tables = new Map();
   const visible = new Set();
 
-  const tableW = (node) => (node.grid
-    ? Math.min(node.grid.cols.length * LAYOUT.GRID_COL_W, LAYOUT.GRID_MAX_W)
-    : LAYOUT.TABLE_W);
+  const tableW = (node) => {
+    if (!node.grid) return LAYOUT.TABLE_W;
+    if (!node.grid.widths) node.grid.widths = computeGridWidths(node.grid);
+    return node.grid.widths.reduce((a, b) => a + b, 0);
+  };
   const tableH = (node) => (node.grid
     ? 1 + node.children.length
     : Math.max(1, node.children ? node.children.length : 0)) * LAYOUT.ROW_H + LAYOUT.PAD_Y * 2;
@@ -95,13 +119,17 @@ export function layoutTree(root, collapsed = new Set()) {
       attach(sub, Math.max(preferred, cursor), rowPath);
     };
     if (node.grid) {
-      // 网格：跳过表头，每元素一行；单元格进 rows，复合值单元格挂子表
-      const colW = out.table.w / node.grid.cols.length;
+      // 网格：跳过表头，每元素一行；单元格进 rows，复合值单元格挂子表；列宽由列画像决定
+      if (!node.grid.widths) node.grid.widths = computeGridWidths(node.grid);
+      const colXs = [0];
+      for (let ci = 1; ci < node.grid.widths.length; ci++) {
+        colXs[ci] = colXs[ci - 1] + node.grid.widths[ci - 1];
+      }
       node.children.forEach((elem, i) => {
         const rowY = LAYOUT.PAD_Y + (1 + i) * LAYOUT.ROW_H;
         for (const p of elem.children) {
           const ci = node.grid.cols.indexOf(p.label);
-          out.rows.push({ x: x + ci * colW, y: rowY, w: colW, node: p });
+          out.rows.push({ x: x + colXs[ci], y: rowY, w: node.grid.widths[ci], node: p });
           if (isExpanded(p)) expandInto(p, p.id, rowY, depth);
         }
       });

@@ -1,7 +1,7 @@
 // 全屏页入口：组装编辑器、解析管线、树图、搜索与双向联动
 import { JsonEditor } from './editor.js';
 import { parseJson } from './json-parser.js';
-import { buildTree, findNodeAt, findNodeById } from './tree-model.js';
+import { buildTree, findNodeAt, findNodeById, computeDefaultCollapsed } from './tree-model.js';
 import { TreeGraph } from './tree-graph.js';
 import { findMatches } from './search.js';
 
@@ -270,17 +270,6 @@ class JsonTreeApp {
       el.className = prevCls;
     }, 1200);
   }
-}
-
-// 自动折叠阈值：单层子节点超过该值时该层默认折叠
-const AUTO_COLLAPSE_THRESHOLD = 50;
-function computeDefaultCollapsed(root) {
-  const collapsed = new Set();
-  (function walk(node) {
-    if (node.children && node.children.length > AUTO_COLLAPSE_THRESHOLD) collapsed.add(node.id);
-    if (node.children) node.children.forEach(walk);
-  })(root);
-  return collapsed;
 }
 
 document.addEventListener('DOMContentLoaded', () => new JsonTreeApp());
