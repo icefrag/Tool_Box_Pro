@@ -255,7 +255,6 @@ export class TreeGraph {
     this.gridRows = new Map();
     this.edgeRecords = [];       // hover 血缘高亮用：{ from, to, el }
     this.tableEls = new Map();   // 表格 path → 渲染元素
-    this.rowCells = new Map();   // 网格数据行 path → 单元格 path 列表
     if (!root) {
       this._layout = null;
       this._hideMinimap();
@@ -491,15 +490,11 @@ export class TreeGraph {
       });
       this.rowEls.set(elem.id, rowG);
       this.gridRows.set(elem.id, { x: table.x, y: table.y + rowY, w: table.w, h: LAYOUT.ROW_H });
-      const cellIds = [];
       for (const p of elem.children) {
-        cellIds.push(p.id);
         const cell = this._gridCell(p, rows.get(p.id), table);
         this.rowEls.set(p.id, cell);
         rowG.appendChild(cell);
       }
-      this.rowCells.set(elem.id, cellIds);
-      this._hoverLineage(rowG, () => new Set(cellIds));
       g.appendChild(rowG);
     });
     return g;
@@ -622,7 +617,15 @@ export class TreeGraph {
   }
 
   _hoverLineage(el, getFromIds) {
-    el.addEventListener('mouseenter', () => this._setLineage(getFromIds()));
+    el.addEventListener('mouseenter', () => {
+      const fromIds = getFromIds();
+      // 悬停无血缘的元素(标量格)立即清除高亮：不保留残留，也不干扰查看 title 原文
+      if (!this.edgeRecords.some((e) => fromIds.has(e.from))) {
+        this._clearLineage();
+        return;
+      }
+      this._setLineage(fromIds);
+    });
     el.addEventListener('mouseleave', () => this._clearLineage());
   }
 
