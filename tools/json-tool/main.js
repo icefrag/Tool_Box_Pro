@@ -37,7 +37,12 @@ class JsonTreeApp {
     });
     this.graph = new TreeGraph($('graph-svg'));
     this.graph.attachMinimap($('minimap-svg'));
-    this.graph.onNodeClick = (node) => this.editor.selectRange(node.start, node.end);
+    this.graph.onNodeClick = (node) => {
+      // 点击联动引发的编辑器跳转不再反向平移画布：selectRange 的 setCursor 会在
+      // cursorActivity 防抖(200ms)后回调 handleCursor，记录时间窗并只更新高亮
+      this.suppressCursorAt = Date.now();
+      this.editor.selectRange(node.start, node.end);
+    };
     this.graph.onToggleCollapse = (node) => this.toggleCollapse(node);
 
     this.bindToolbar();
@@ -220,6 +225,12 @@ class JsonTreeApp {
     if (!this.tree) return;
     const node = findNodeAt(this.tree, offset);
     const id = node ? node.id : null;
+    // 树图点击联动引发的编辑器跳转：只更新高亮，不平移画布（防「点击→跳转→反向拽走画布」回路）
+    if (Date.now() - (this.suppressCursorAt || 0) < 400) {
+      this.lastFocusId = id;
+      this.graph.setFocus(id);
+      return;
+    }
     this.graph.setFocus(id);
     if (!id) {
       this.lastFocusId = null;

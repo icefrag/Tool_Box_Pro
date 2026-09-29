@@ -115,16 +115,16 @@ export function findNodeById(root, id) {
 }
 
 // 默认折叠集：单层子节点超过 autoThreshold 的节点整层收起；
-// 网格行数超过 gridRows 时，其复合单元格默认收起（孙网格递归适用），
-// 用户手动展开由调用方的 userExpanded 抵消
-export function computeDefaultCollapsed(root, { autoThreshold = 50, gridRows = 6 } = {}) {
+// 网格行数超过 gridRows 时，属性 ≥ cellThreshold 的复合单元格默认收起
+// （小对象直接展开出子表与连线），孙网格递归适用；用户手动展开由调用方的 userExpanded 抵消
+export function computeDefaultCollapsed(root, { autoThreshold = 50, gridRows = 6, cellThreshold = 3 } = {}) {
   const collapsed = new Set();
   (function walk(node) {
     if (node.children && node.children.length > autoThreshold) collapsed.add(node.id);
     if (node.grid && node.children.length > gridRows) {
       for (const elem of node.children) {
         for (const p of elem.children) {
-          if (p.children && p.children.length > 0) collapsed.add(p.id);
+          if (p.children && p.children.length >= cellThreshold) collapsed.add(p.id);
         }
       }
     }

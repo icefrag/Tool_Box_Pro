@@ -94,7 +94,8 @@ assert.equal(tree.children[0].valueText, '1');
   assert.deepEqual(m.children[0].grid.kinds, ['scalar']);
 }
 
-// computeDefaultCollapsed：>50 子节点默认折叠；网格行数>6 时其复合单元格默认折叠（递归孙网格）
+// computeDefaultCollapsed：>50 子节点默认折叠；网格行数>6 时其复合单元格默认折叠，
+// 但属性 < 3 的小对象直接展开出子表与连线（cellThreshold）；递归适用孙网格
 {
   const big = JSON.stringify({ arr: Array.from({ length: 51 }, (_, i) => [i]) });
   const t1 = buildTree(parseJson(big).ast);
@@ -102,22 +103,22 @@ assert.equal(tree.children[0].valueText, '1');
 
   const rows = JSON.stringify({
     fields: [
-      { basic: { a: 1 }, rules: { r: 1 }, code: 'A' },
-      { basic: { b: 2 }, rules: { r: 2 }, code: 'B' },
-      { basic: { c: 3 }, rules: { r: 3 }, code: 'C' },
-      { basic: { d: 4 }, rules: { r: 4 }, code: 'D' },
-      { basic: { e: 5 }, rules: { r: 5 }, code: 'E' },
-      { basic: { f: 6 }, rules: { r: 6 }, code: 'F' },
-      { basic: { g: 7 }, rules: { r: 7 }, code: 'G' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 1 }, code: 'A' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 2 }, code: 'B' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 3 }, code: 'C' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 4 }, code: 'D' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 5 }, code: 'E' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 6 }, code: 'F' },
+      { basic: { a: 1, b: 2, c: 3 }, rules: { r: 7 }, code: 'G' },
     ],
     solo: [{ only: 1 }],
   });
   const t2 = buildTree(parseJson(rows).ast);
   const c2 = computeDefaultCollapsed(t2);
-  assert.ok(c2.has('$.fields[0].basic'));   // 7 行 > 6 → 单元格默认折叠
-  assert.ok(c2.has('$.fields[6].rules'));
-  assert.ok(!c2.has('$.fields[0].code'));   // 标量单元格无折叠概念
+  assert.ok(c2.has('$.fields[0].basic'));        // 7 行 > 6 且 3 属性 ≥ 阈值 → 收
+  assert.ok(!c2.has('$.fields[0].rules'));       // 1 属性小对象 → 直接展开
+  assert.ok(!c2.has('$.fields[0].code'));        // 标量单元格无折叠概念
   assert.equal(c2.has('$.solo[0].only'), false); // 1 行 ≤ 6 → 不折叠
-  assert.equal(c2.has('$.fields'), false);  // 网格本身 7 行 < 50 不整体折叠
+  assert.equal(c2.has('$.fields'), false);       // 网格本身 7 行 < 50 不整体折叠
 }
 
